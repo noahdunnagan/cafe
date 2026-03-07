@@ -43,6 +43,15 @@
       "author": {
         "name": "Noah Dunnagan"
       }
+    },
+    {
+      "name": "distill",
+      "source": "./plugins/distill",
+      "description": "Rigorous code refactoring — every line earns its place. Preserves functionality, removes everything that doesn't justify its existence.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
     }
   ]
 }
