@@ -1,0 +1,8 @@
+{
+  "name": "parallel",
+  "description": "Launch and track parallel work in isolated git worktrees. Prevents duplicate work, tracks active branches.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
