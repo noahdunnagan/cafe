@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "plugins": [
     {
@@ -48,7 +48,7 @@
       "name": "distill",
       "source": "./plugins/distill",
       "description": "Rigorous code refactoring — every line earns its place. Preserves functionality, removes everything that doesn't justify its existence.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Noah Dunnagan"
       }

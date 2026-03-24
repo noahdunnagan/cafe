@@ -7,9 +7,9 @@ disable-model-invocation: false
 
 # Distill
 
-Strip code to its purest form. Same behavior, fewer words, clearer intent.
+Complexity is the enemy. Every layer of indirection, every clever abstraction, every "just in case" branch is friction. Velocity is paramount, and simplicity is what protects it. Needless code isn't harmless. It's drag.
 
-This is not a linter. Not a formatter. It's an editorial pass where every line must defend its existence.
+Strip code to its purest form. Same behavior, fewer words, clearer intent. This is not a linter. Not a formatter. It's an editorial pass where every line must defend its existence.
 
 ## Process
 
