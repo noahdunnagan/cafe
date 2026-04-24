@@ -12,6 +12,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `codex` | Skill | Delegate read-only research to OpenAI's Codex CLI using the fast codex-spark model. |
 | `distill` | Skill + Command | Rigorous code refactoring. Every line earns its place. Preserves functionality, cuts complexity. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. Prevents duplicates, manages branches. |
+| `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |
 
 ## Install
 
@@ -25,6 +26,7 @@ Add the marketplace and install what you want:
 /plugin install codex@cafe
 /plugin install distill@cafe
 /plugin install parallel@cafe
+/plugin install claude-review@cafe
 ```
 
 ## License

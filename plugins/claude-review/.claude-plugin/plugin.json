@@ -1,0 +1,8 @@
+{
+  "name": "claude-review",
+  "description": "Claude Code Review on GitHub PRs. /setup-review drops the workflow into a repo; /pr runs the review loop.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
