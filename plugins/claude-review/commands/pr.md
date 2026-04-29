@@ -1,14 +1,14 @@
 ---
 name: PR Review Loop
 command: pr
-description: Run the full PR review loop. Adds the `review` label, polls for Claude Code Review, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch PR). Requires the workflow from /setup-review to be installed.
+description: Run the full PR review loop. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch PR). Requires the workflow from /setup-review to be installed.
 ---
 
 You are running the PR review loop for this repository. This is a fully automated cycle.
 
 ## Prerequisites
 
-This command assumes the `claude-review` workflow is installed in the repo and the `CLAUDE_CODE_OAUTH_TOKEN` secret is set. If the workflow is missing, run `/setup-review` first.
+This command assumes the code-review workflow is installed in the repo and the `CLAUDE_CODE_OAUTH_TOKEN` secret is set. If the workflow is missing, run `/setup-review` first.
 
 ## Setup
 
@@ -23,12 +23,17 @@ Ensure the PR is marked ready (not draft). Add the `review` label if not already
 
 Repeat this cycle until the review passes clean:
 
-### 1. Wait for Claude Code Review
+### 1. Identify and wait for the review check
 
-Poll `gh pr checks <number>` every 10 seconds. Watch for the `claude-review` check.
-- If it passes: check for comments anyway (a pass with comments still needs attention).
-- If it fails: check logs with `gh run view` to determine if it's a review failure (has comments) or an infra failure (bad credentials, timeout, etc). If infra failure, report to the user and stop.
-- If it's "skipping": a second run was triggered while the first was still going. Wait for the non-skipping run.
+Detect the check name from the workflow file rather than hardcoding it:
+
+1. Find the review workflow: `grep -l 'anthropics/claude-code-action' .github/workflows/*.yml 2>/dev/null`. If multiple match, prefer one triggered by `pull_request: types: [labeled]`. If none match, stop and tell the user to run `/setup-review`.
+2. Read the matched file. The check name is the job key (the YAML key under `jobs:`). Common values: `code-review`, `claude-review`. Capture it as `$CHECK`.
+
+Then poll `gh pr checks <number>` every 10 seconds. Watch for `$CHECK`.
+- If `$CHECK` passes: still fetch comments — a pass with comments needs attention.
+- If `$CHECK` fails: check logs with `gh run view` to determine review failure (has comments) vs infra failure (bad credentials, timeout). If infra failure, report and stop.
+- If `$CHECK` is "skipping": a second run was queued while the first was running. Wait for the non-skipping run.
 
 ### 2. Read all review comments
 
@@ -55,7 +60,7 @@ Never leave a comment without a reply. Never leave a thread unresolved.
 ### 4. Push and repeat
 
 After addressing all comments:
-1. Stage and commit the fixes (clear commit message referencing the review).
+1. Stage and commit the fixes (clear commit message referencing the review). Do **not** add a `Co-Authored-By: Claude` trailer or a `🤖 Generated with [Claude Code]` footer — these commits are the user's authorship. Same rule for any PR body edits you make in this loop.
 2. Push to the branch.
 3. The workflow only fires on label events, so to request another review cycle: remove the `review` label and re-add it (`gh pr edit <num> --remove-label review && gh pr edit <num> --add-label review`). Then go back to step 1.
 
