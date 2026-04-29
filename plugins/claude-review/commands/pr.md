@@ -1,7 +1,7 @@
 ---
 name: PR Review Loop
 command: pr
-description: Run the full PR review loop. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch PR). Requires the workflow from /setup-review to be installed.
+description: Run the full PR review loop. If no PR exists for the current branch, opens one first. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch, opens PR if needed). Requires the workflow from /setup-review to be installed.
 ---
 
 You are running the PR review loop for this repository. This is a fully automated cycle.
@@ -15,9 +15,21 @@ This command assumes the code-review workflow is installed in the repo and the `
 Parse the input:
 - If a PR number is given, use it.
 - If no number, detect the current branch's PR via `gh pr view --json number -q .number`.
-- If no PR exists, stop and tell the user.
+- If no PR exists for the current branch, **create one** (see below) before continuing.
 
-Ensure the PR is marked ready (not draft). Add the `review` label if not already present. Adding the label is what triggers the workflow.
+### Creating a PR when none exists
+
+1. Refuse if the current branch is the repo's default branch (`main` / `master` / whatever `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` returns). Tell the user to make a feature branch first — do not create a PR from the default branch into itself.
+2. Refuse if there are uncommitted changes. Ask the user to commit (or stash) first; do not silently sweep them in.
+3. If the branch has no upstream, push it: `git push -u origin <branch>`.
+4. Build the PR title and body:
+   - **Title** — use the latest commit's subject if it's conventional and descriptive; otherwise summarize the diff in one short line.
+   - **Body** — a Summary section (what changed and why, bullet form) and a Test plan section (checklist). Read `git log <default>..HEAD` and `git diff <default>...HEAD` to write this — cover all commits, not just the most recent.
+   - **No AI-attribution footer** — no `🤖 Generated with [Claude Code]`, no `Co-Authored-By: Claude` (the global hook will block these anyway).
+5. `gh pr create --title "..." --body "..."` (use a HEREDOC for the body so multi-line content survives).
+6. Capture the new PR number and proceed.
+
+Then ensure the PR is marked ready (not draft). Add the `review` label if not already present. Adding the label is what triggers the workflow.
 
 ## The Loop
 
