@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code",
-    "version": "1.3.0"
+    "version": "1.5.0"
   },
   "plugins": [
     {
@@ -65,8 +65,8 @@
     {
       "name": "claude-review",
       "source": "./plugins/claude-review",
-      "description": "Claude Code Review on GitHub PRs. /setup-review drops a label-gated workflow into a repo; /pr runs the review loop.",
-      "version": "1.0.0",
+      "description": "Code review and repo hygiene. /setup-review, /pr, /audit, /audit-all, /migrate-to-agents-md.",
+      "version": "1.2.0",
       "author": {
         "name": "Noah Dunnagan"
       }
