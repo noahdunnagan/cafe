@@ -1,7 +1,7 @@
 {
   "name": "claude-review",
-  "description": "Claude Code Review on GitHub PRs. /setup-review drops the workflow into a repo; /pr runs the review loop.",
-  "version": "1.0.0",
+  "description": "Code review and repo hygiene. /setup-review installs a label-gated GitHub Action; /pr runs the PR review loop; /audit runs a four-pass local audit; /audit-all parallelizes audits across worktrees; /migrate-to-agents-md ports CLAUDE.md → AGENTS.md.",
+  "version": "1.2.0",
   "author": {
     "name": "Noah Dunnagan"
   }

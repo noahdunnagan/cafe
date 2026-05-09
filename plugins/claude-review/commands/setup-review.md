@@ -1,10 +1,10 @@
 ---
-name: Setup Claude Code Review
+name: Setup Code Review
 command: setup-review
-description: Install the Claude Code Review GitHub Action into the current repo. Opens a PR with the workflow, then instructs the user to create the `review` label and set the `CLAUDE_CODE_OAUTH_TOKEN` secret. Label-gated so it never auto-reviews.
+description: Install the code-review GitHub Action workflow into the current repo. Opens a PR with the workflow, then instructs the user to create the `review` label and set the `CLAUDE_CODE_OAUTH_TOKEN` secret. Label-gated so it never auto-reviews.
 ---
 
-You are installing the Claude Code Review GitHub Action into the user's current repository. This is a one-shot setup. The end state: a PR is open with the workflow file, the user knows how to create the `review` label and the `CLAUDE_CODE_OAUTH_TOKEN` secret, and from then on they trigger reviews by adding the `review` label (usually via `/pr`).
+You are installing the code-review GitHub Action workflow into the user's current repository. This is a one-shot setup. The end state: a PR is open with the workflow file, the user knows how to create the `review` label and the `CLAUDE_CODE_OAUTH_TOKEN` secret, and from then on they trigger reviews by adding the `review` label (usually via `/pr`).
 
 ## Design invariants
 
@@ -22,23 +22,23 @@ You are installing the Claude Code Review GitHub Action into the user's current 
 
 ### 2. Check for existing workflow
 
-If `.github/workflows/claude-code-review.yml` (or any workflow that uses `anthropics/claude-code-action`) already exists, stop and ask the user whether to overwrite. Do not silently clobber.
+If `.github/workflows/code-review.yml`, `.github/workflows/claude-code-review.yml`, or any workflow that uses `anthropics/claude-code-action` already exists, stop and ask the user whether to overwrite. Do not silently clobber.
 
 ### 3. Install the workflow file
 
-Read the template from this plugin's `assets/claude-code-review.yml` (sibling to this command file) and write it to `.github/workflows/claude-code-review.yml` in the target repo. Create `.github/workflows/` if needed.
+Read the template from this plugin's `assets/code-review.yml` (sibling to this command file) and write it to `.github/workflows/code-review.yml` in the target repo. Create `.github/workflows/` if needed.
 
 Do not modify the template content. It is intentionally pinned to the label-only trigger and the full review prompt.
 
 ### 4. Commit on a new branch and open a PR
 
-Ask the user before doing these. Default branch name: `chore/add-claude-review`.
+Ask the user before doing these. Default branch name: `chore/add-pr-review-workflow`.
 
-1. `git checkout -b chore/add-claude-review`
-2. `git add .github/workflows/claude-code-review.yml`
-3. Commit with message: `chore: add claude code review workflow`
-4. `git push -u origin chore/add-claude-review`
-5. `gh pr create` with title `chore: add claude code review workflow` and a body that includes the **post-merge setup steps** below so the user has them in the PR description.
+1. `git checkout -b chore/add-pr-review-workflow`
+2. `git add .github/workflows/code-review.yml`
+3. Commit with message: `chore: add code review workflow`. Do **not** add a `Co-Authored-By: Claude` trailer or a `🤖 Generated with [Claude Code]` footer.
+4. `git push -u origin chore/add-pr-review-workflow`
+5. `gh pr create` with title `chore: add code review workflow` and a body that includes the **post-merge setup steps** below so the user has them in the PR description. No AI-attribution footer in the body either.
 
 ### 5. Tell the user the two manual steps
 
