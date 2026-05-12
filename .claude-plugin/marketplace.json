@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code",
-    "version": "1.5.0"
+    "version": "1.6.0"
   },
   "plugins": [
     {
@@ -67,6 +67,15 @@
       "source": "./plugins/claude-review",
       "description": "Code review and repo hygiene. /setup-review, /pr, /audit, /audit-all, /migrate-to-agents-md.",
       "version": "1.2.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
+    },
+    {
+      "name": "clog",
+      "source": "./plugins/clog",
+      "description": "Teaches Claude to search your Claude Code chat history via the `clog` CLI. Auto-invokes for past-session lookups.",
+      "version": "0.1.0",
       "author": {
         "name": "Noah Dunnagan"
       }

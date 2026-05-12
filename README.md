@@ -13,6 +13,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `distill` | Skill + Command | Rigorous code refactoring. Every line earns its place. Preserves functionality, cuts complexity. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. Prevents duplicates, manages branches. |
 | `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |
+| `clog` | Skill | Teaches Claude to search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. Auto-invokes for past-session lookups. |
 
 ## Install
 
@@ -27,7 +28,10 @@ Add the marketplace and install what you want:
 /plugin install distill@cafe
 /plugin install parallel@cafe
 /plugin install claude-review@cafe
+/plugin install clog@cafe
 ```
+
+The `clog` plugin assumes the `clog` binary is on your `$PATH`. See [noahdunnagan/clog](https://github.com/noahdunnagan/clog) for install.
 
 ## License
 
