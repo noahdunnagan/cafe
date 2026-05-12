@@ -1,0 +1,8 @@
+{
+  "name": "clog",
+  "description": "Search Claude Code chat history via the `clog` CLI. Auto-invokes when the user asks about past sessions, branches, or conversations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
