@@ -9,7 +9,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `blueprint` | Skill + Command | Three-mode planning — always-active disposition, `/blueprint` for generating requirements docs, and blueprint execution. |
 | `workflow` | Commands | `/push` for conventional commits, `/session` for session logging. |
 | `rust-guide` | Skill | Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it. |
-| `codex` | Skill | Delegate read-only research to OpenAI's Codex CLI using the fast codex-spark model. |
+| `codex` | Skill | Delegate research, code review, and adversarial sparring to OpenAI's Codex CLI. Auto-selects the best/cheapest available model — no version to maintain. |
 | `distill` | Skill + Command | Rigorous code refactoring. Every line earns its place. Preserves functionality, cuts complexity. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. Prevents duplicates, manages branches. |
 | `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |
@@ -32,6 +32,27 @@ Add the marketplace and install what you want:
 ```
 
 The `clog` plugin assumes the `clog` binary is on your `$PATH`. See [noahdunnagan/clog](https://github.com/noahdunnagan/clog) for install.
+
+## Use with other AI agents (Codex, Cursor, Copilot, Gemini, Zed, …)
+
+The skills use the cross-vendor [`SKILL.md`](https://agents.md) format, so they work
+in far more than Claude Code. `install.sh` symlinks every skill and command into
+each AI coding agent it finds on your machine — **no signup, no dependencies, no network**:
+
+```
+git clone https://github.com/noahdunnagan/cafe && cd cafe
+./install.sh            # detects your agents and links everything in
+./install.sh --dry-run  # preview first
+./install.sh --project .   # per-repo install (needed for Cursor — it has no global skills dir)
+```
+
+| Tier | Agents | What they get |
+|------|--------|---------------|
+| **Full** (skills + commands) | Claude Code, Codex CLI, Cursor, GitHub Copilot, Gemini CLI, opencode, Zed, Windsurf, Cline, Kilo | native `SKILL.md` — zero conversion |
+| **Instructions** | Aider, + any [AGENTS.md](https://agents.md)-aware tool | `AGENTS.md` as always-on context |
+
+Symlinks point back into the clone, so `git pull` updates every agent at once. Use
+`--copy` if your filesystem can't symlink (Windows). See [`AGENTS.md`](AGENTS.md) for details.
 
 ## License
 
