@@ -11,9 +11,33 @@ Three modes. Pick the right one.
 
 | Mode | Model | Effort | Use for |
 |------|-------|--------|---------|
-| `research` | `gpt-5.3-codex-spark` | low | Fast lookups, codebase questions, shallow exploration |
-| `review` | `gpt-5.3-codex` | high | Deep code review, bug hunts, audits |
-| `spar` | `gpt-5.5` | xhigh | Architecture, design tradeoffs, gnarly bugs, ambiguous requirements. Multi-turn dialogue between Claude and Codex |
+| `research` | cheapest available | low | Fast lookups, codebase questions, shallow exploration |
+| `review` | best available | high | Deep code review, bug hunts, audits |
+| `spar` | best available | xhigh | Architecture, design tradeoffs, gnarly bugs, ambiguous requirements. Multi-turn dialogue between Claude and Codex |
+
+## Model selection (auto-updating — never hardcode model ids)
+
+Model ids change as OpenAI ships new ones. Don't pin them. Resolve at run time
+from Codex's own model cache (`~/.codex/models_cache.json`), which the CLI keeps
+fresh automatically. Codex ranks models by `priority` — lowest = most capable.
+
+```bash
+# best available (frontier) → spar, review
+jq -r '[.models[]|select(.visibility=="list" and .supported_in_api)]|sort_by(.priority)|.[0].slug // empty' ~/.codex/models_cache.json
+
+# cheapest available (small/fast) → research
+jq -r '[.models[]|select(.visibility=="list" and .supported_in_api)]|sort_by(.priority)|.[-1].slug // empty' ~/.codex/models_cache.json
+```
+
+Run the relevant one, then pass the result as `-m <slug>` in the commands below
+(shown as `<best>` / `<cheapest>` placeholders). If it prints nothing (no cache,
+no `jq`), **omit `-m` entirely** — Codex falls back to its configured default,
+which already tracks the latest model.
+<!-- ponytail: priority order is Codex's own ranking; cheapest = lowest-ranked visible model. If priority ever stops tracking cost, swap the cheap selector to match on slug (e.g. endswith "-mini"). -->
+
+> **`spar` uses the same model as `review`** (best available), distinguished by
+> `xhigh` effort and the multi-turn loop. To keep `review` cheaper, resolve the
+> cheapest model for it too — at the cost of a less rigorous review.
 
 ## When to reach for which
 
@@ -48,7 +72,7 @@ Claude and Codex go back and forth until they converge or surface a real disagre
 
 ```bash
 codex exec \
-  -m gpt-5.5 \
+  -m <best> \
   -c model_reasoning_effort=xhigh \
   -c service_tier=fast \
   -s read-only \
@@ -99,11 +123,11 @@ This is an architecture call with real tradeoffs. Reach for `spar` without being
 
 ## Mode: `research`
 
-Fast, shallow research using codex-spark. Single shot.
+Fast, shallow research using the cheapest current model. Single shot.
 
 ```bash
 codex exec \
-  -m gpt-5.3-codex-spark \
+  -m <cheapest> \
   -c model_reasoning_effort=low \
   --ephemeral \
   -s read-only \
@@ -124,7 +148,7 @@ Deep code review with the full model at high reasoning. Triggered when the user'
 
 ```bash
 codex exec \
-  -m gpt-5.3-codex \
+  -m <best> \
   -c model_reasoning_effort=high \
   --ephemeral \
   -s read-only \
@@ -168,5 +192,6 @@ When the skill is invoked implicitly (the user didn't type `/codex` but the prob
 | `codex` not installed | Tell user: `npm i -g @openai/codex` (note: user prefers bun globally elsewhere, but codex distributes via npm) |
 | Auth failure | Tell user: `codex login` |
 | Timeout (>120s research / >300s spar round) | Kill process, report partial output |
-| Model not available | Fall back to default codex model, inform user |
+| Model resolver prints nothing (no cache / no `jq`) | Omit `-m`; Codex uses its configured default |
+| Resolved model rejected by Codex | Retry with `-m` omitted, inform user |
 | `spar` session id unparseable | Fall back to single-shot, inform user |
