@@ -1,0 +1,8 @@
+{
+  "name": "tech-stack",
+  "description": "The canonical, opinionated tech stack for new projects — TanStack web, Rust backends, Railway-first, self-hosted data. Always active when scaffolding or choosing technology.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
