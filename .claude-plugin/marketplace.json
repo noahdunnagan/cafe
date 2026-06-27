@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.8.0"
+    "version": "1.9.0"
   },
   "plugins": [
     {
@@ -40,6 +40,15 @@
       "source": "./plugins/codex",
       "description": "Delegate research, code review, or collaborative multi-turn sparring to Codex CLI. Auto-selects the cheapest model for research and the best available for review and xhigh back-and-forth with Claude.",
       "version": "1.3.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
+    },
+    {
+      "name": "glm",
+      "source": "./plugins/glm",
+      "description": "Delegate to GLM — a fast, cheap model running headless inside Claude Code that beats Opus at frontend. Frontend always goes to GLM; everything else can too. Fast (routers) and regular (models) serving lanes.",
+      "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
       }
