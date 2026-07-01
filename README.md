@@ -16,6 +16,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |
 | `clog` | Skill | Teaches Claude to search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. Auto-invokes for past-session lookups. |
 | `tech-stack` | Skill | The canonical, opinionated tech stack for new projects — TanStack web, Rust backends, Railway-first, self-hosted data. Always active when choosing technology. |
+| `fable` | Skill | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Delegation ladder, workflow model-override gotchas, effort tuning, API reference. |
 
 ## Install
 
@@ -33,6 +34,7 @@ Add the marketplace and install what you want:
 /plugin install claude-review@cafe
 /plugin install clog@cafe
 /plugin install tech-stack@cafe
+/plugin install fable@cafe
 ```
 
 The `clog` plugin assumes the `clog` binary is on your `$PATH`. See [noahdunnagan/clog](https://github.com/noahdunnagan/clog) for install.

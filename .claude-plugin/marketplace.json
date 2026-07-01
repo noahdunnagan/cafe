@@ -97,6 +97,15 @@
       "author": {
         "name": "Noah Dunnagan"
       }
+    },
+    {
+      "name": "fable",
+      "source": "./plugins/fable",
+      "description": "Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to Opus 4.8 and Sonnet 5 subagents. Fable executes only what's hard or high-stakes, or what the user asks it to.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
     }
   ]
 }
