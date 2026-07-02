@@ -1,6 +1,6 @@
 ---
 name: fable
-description: Get the most out of Claude Fable 5 — the smartest generally available model, priced and positioned like it. Fable is the architect, not the workhorse: it plans, dictates tasks, evaluates, and verifies, while execution delegates down to Opus 4.8, Sonnet 5, or Haiku 4.5 unless the work is hard or high-stakes or the user asks for Fable by name. Use when the user says "/fable", "use fable", "should this run on fable", asks which Claude model should do a task, or questions model routing and cost. Always active when the session model is Fable 5 or when spawning subagents or workflows from a Fable session; also applies in reverse — summoning a Fable subagent from a cheaper session for work that deserves it.
+description: ALWAYS ACTIVE on any Claude Fable 5 session. Load before every substantive turn (any task that uses tools or produces work: code, research, review, ops) and before every Agent or Workflow call; do not wait for "/fable". Routes each piece of work to the right model (Fable architects, cheaper models execute) and decides delegate-versus-inline, briefing, and effort tier. Skip only turns that are pure conversation with no work product. On non-Fable sessions, load only on explicit mention: "/fable", "use fable", "should this run on fable", or a Claude model-routing or model-cost question.
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -41,7 +41,7 @@ The ladder assumes Fable is the session model, but the mirror holds. On an Opus 
 
 The ladder moves *execution*, not intelligence. Fable always thinks, usually delegates, sometimes executes, never disappears. Every turn's reading, planning, briefing, and review IS Fable — the architect seat is the highest-leverage place for the smartest model, and it's occupied 100% of the time. The wrong reading of this skill is "avoid Fable"; the right one is "don't spend Fable on typing."
 
-When invoked explicitly as `/fable <task>`, run the full architect loop: triage the task against the ladder, plan, brief, delegate, verify with fresh eyes, judge the result. `/fable` on a question just answers with the routing call.
+When invoked explicitly as `/fable <task>`, run the full architect loop: triage the task against the ladder, plan, brief, delegate, verify with fresh eyes, judge the result. `/fable` on a question just answers with the routing call. But explicit invocation is the exception, not the entry point — on a Fable session this skill governs every substantive task as a matter of course. If work is about to be executed or a subagent is about to be spawned and the ladder hasn't been applied, that's the failure, not an option.
 
 ## Delegate right
 
