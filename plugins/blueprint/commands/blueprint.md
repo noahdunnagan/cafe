@@ -1,7 +1,7 @@
 ---
-name: Blueprint
+name: blueprint
 command: blueprint
-description: Generate a detailed requirements blueprint for a task. Produces ./blueprint.md — no code, just decisions.
+description: [cafe] Generate a detailed requirements blueprint for a task. Produces ./blueprint.md — no code, just decisions.
 ---
 
 You are generating a blueprint. Activate **Mode 2 — Generation** from the blueprint skill.
