@@ -1,7 +1,7 @@
 ---
-name: PR Review Loop
+name: pr-review-loop
 command: pr
-description: Run the full PR review loop. If no PR exists for the current branch, opens one first. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch, opens PR if needed). Requires the workflow from /setup-review to be installed.
+description: [cafe] Run the full PR review loop. If no PR exists for the current branch, opens one first. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch, opens PR if needed). Requires the workflow from /setup-review to be installed.
 ---
 
 You are running the PR review loop for this repository. This is a fully automated cycle.

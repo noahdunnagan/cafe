@@ -1,7 +1,7 @@
 ---
-name: Audit All
+name: audit-all
 command: audit-all
-description: Run /audit in parallel across multiple directories using isolated git worktrees. One PR per directory with real fixes; no PR for clean ones. Usage: /audit-all <glob-or-list> (e.g. /audit-all ./plugins/*/, /audit-all packages/foo packages/bar)
+description: [cafe] Run /audit in parallel across multiple directories using isolated git worktrees. One PR per directory with real fixes; no PR for clean ones. Usage: /audit-all <glob-or-list> (e.g. /audit-all ./plugins/*/, /audit-all packages/foo packages/bar)
 ---
 
 You are running the four-pass audit (security / performance / safety / cleanup) across multiple directories in parallel, using isolated git worktrees so the agents cannot stomp on each other.
