@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.9.0"
+    "version": "1.10.0"
   },
   "plugins": [
     {
@@ -102,6 +102,15 @@
       "name": "fable",
       "source": "./plugins/fable",
       "description": "Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to Opus 4.8 and Sonnet 5 subagents. Fable executes only what's hard or high-stakes, or what the user asks it to.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
+    },
+    {
+      "name": "todo",
+      "source": "./plugins/todo",
+      "description": "Turn \"this needs to be done\" into a terse GitHub issue on any repo. The title carries the todo, the body exists only when the title can't.",
       "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
