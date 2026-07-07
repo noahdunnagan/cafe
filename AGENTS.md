@@ -27,10 +27,11 @@ at once. Use `--copy` where symlinks aren't available (Windows).
 - **codex** — delegate research / review / sparring to the Codex CLI (auto-selects the best/cheapest Codex model).
 - **parallel** — launch and track parallel work in isolated git worktrees.
 - **clog** — search your Claude Code chat history via the `clog` CLI.
+- **todo** — file a terse GitHub issue for a task on any repo; title carries the todo, body only when the title can't.
 
 ## Commands
 
-`/push` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/pr` · `/setup-review` · `/audit` · `/audit-all` · `/migrate-to-agents-md`
+`/push` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/pr` · `/setup-review` · `/audit` · `/audit-all` · `/migrate-to-agents-md` · `/todo`
 
 > Agents without `SKILL.md` support (e.g. Aider) read this file directly — add it to
 > Aider's `read:` list to get the skill guidance as always-on context.
