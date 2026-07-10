@@ -1,6 +1,6 @@
 ---
 name: glm
-description: Delegate work to GLM, a fast cheap model that runs headless inside Claude Code and beats Opus at frontend. Use when the user says "/glm", "ask glm", "have glm build/do this", "let glm", "delegate to glm" — and reach for it yourself for any frontend/UI work (always) or any self-contained task worth offloading (why not, it's fast and cheap).
+description: Legacy instructions for delegating work to GLM, a sunset model that runs headless inside Claude Code. Use only when the user explicitly says "/glm", "ask glm", "have glm build/do this", "let glm", or "delegate to glm"; never invoke it automatically for frontend/UI or other work.
 allowed-tools:
   - Bash
   - Read
@@ -10,13 +10,13 @@ allowed-tools:
 
 # GLM
 
-GLM is a fast, cheap model — GLM-5.2, 1M context — running as a headless Claude Code agent pointed at Fireworks. The point isn't just that it's quick. **It scores better than Opus at frontend.** So for UI work it isn't a fallback, it's the right tool.
+GLM is a sunset model — GLM-5.2, 1M context — that ran as a headless Claude Code agent pointed at Fireworks. Keep this skill for explicit legacy use only; never select GLM based on the task type.
 
-## The rule
+## Explicit invocation only
 
-- **Frontend → always GLM.** Components, layouts, CSS, Tailwind, responsive work, animations, design-system wiring. GLM beats you here. Don't hand-write frontend yourself — brief GLM and review what it ships.
-- **Anything else → GLM too, why not.** It's fast and cheap. Boilerplate, scaffolding, config, throwaway scripts, mechanical edits across a known shape — delegate them and stay on the harder thread.
-- **You own the call, GLM does the hands.** Keep the *decision* — architecture, security, money, migrations, correctness calls — but GLM still does the legwork even there. Nothing is off-limits to delegate; the judgment is what stays with you. Either way: **always review the output.** It's smart, not infallible.
+- **Never auto-delegate to GLM.** Frontend/UI and all other work follow the normal model-routing rules.
+- **Use GLM only when the user explicitly asks for it.** If the sunset endpoint is unavailable, report that and continue without GLM.
+- **Always review explicitly requested output.** Keep architecture, security, money, migrations, and correctness decisions with the main agent.
 
 ## The one invocation
 
@@ -26,7 +26,7 @@ Two lanes, same GLM-5.2, picked by alias — the difference is which Fireworks e
 
 | Lane | flag | Endpoint | Use for |
 |------|------|----------|---------|
-| **Fast** (default) | `--model sonnet` | `routers/glm-5p2` — latency-optimized router | Almost everything. Quick frontend, iteration, the why-not chores. |
+| **Fast** (default) | `--model sonnet` | `routers/glm-5p2` — latency-optimized router | Explicitly requested quick drafts and iteration. |
 | **Regular** | `--model opus` | `models/glm-5p2` — standard | Bigger/trickier builds, or a re-run when the fast lane looks rushed. |
 
 **Same model both lanes.** `opus` is not the smarter one — it's the same GLM-5.2, just the standard endpoint instead of the fast router. Default to `sonnet`; reach for `opus` only when a fast-lane result looks off or you want it un-rushed.
