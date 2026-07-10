@@ -1,6 +1,6 @@
 {
   "name": "glm",
-  "description": "Delegate to GLM — a fast, cheap model running headless inside Claude Code that beats Opus at frontend. Frontend work always goes to GLM; everything else can too. Fast (routers) and regular (models) serving lanes.",
+  "description": "Legacy explicit-only delegation instructions for GLM, a sunset model that ran headless inside Claude Code. Never auto-routes frontend or other work.",
   "version": "1.0.0",
   "author": {
     "name": "Noah Dunnagan"

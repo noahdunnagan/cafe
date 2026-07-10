@@ -10,7 +10,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `workflow` | Commands | `/push` for conventional commits, `/session` for session logging. |
 | `rust-guide` | Skill | Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it. |
 | `codex` | Skill | Delegate research, code review, and adversarial sparring to OpenAI's Codex CLI. Auto-selects the best/cheapest available model — no version to maintain. |
-| `glm` | Skill | Delegate to GLM, a fast cheap model running headless in Claude Code that beats Opus at frontend. Frontend always goes to GLM; everything else can too. Fast/regular serving lanes. Needs the `glm` shell function. |
+| `glm` | Skill | Legacy explicit-only delegation instructions for the sunset GLM model. Never auto-routes frontend or other work. Needs the `glm` shell function and a still-available endpoint. |
 | `distill` | Skill + Command | Rigorous code refactoring. Every line earns its place. Preserves functionality, cuts complexity. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. Prevents duplicates, manages branches. |
 | `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |

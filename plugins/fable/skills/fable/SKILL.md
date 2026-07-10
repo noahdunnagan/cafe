@@ -21,7 +21,7 @@ Route work by weight:
 | Hard **or** high-stakes: the gnarliest debugging, security-sensitive changes, auth, money paths, data migrations | **Fable itself** | Either alone qualifies — size doesn't launder risk. A 15-line token-expiry tweak is Fable work. This is what the price buys. |
 | The user says "use Fable" | **Fable itself** | Explicit request always wins; never downgrade for cost. It pins the work the user pointed at — not every subagent in a fan-out. Confirm before running a whole tree on Fable. |
 
-Frontend is the standing exception: it goes to GLM when the `glm` skill is installed — it beats Opus there.
+Frontend follows the same ladder. Never route work to GLM automatically; GLM is sunset and remains explicit opt-in only.
 
 Routing is silent. Pick the model and proceed; don't narrate cost tradeoffs or ask permission to spend unless the user raised cost first.
 
