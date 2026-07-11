@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.11.0"
+    "version": "1.12.0"
   },
   "plugins": [
     {
       "name": "blueprint",
       "source": "./plugins/blueprint",
-      "description": "Three-mode planning system — always-active disposition, explicit blueprint generation (/blueprint), and blueprint execution.",
+      "description": "Three-mode planning system \u2014 always-active disposition, explicit blueprint generation (/blueprint), and blueprint execution.",
       "version": "2.0.1",
       "author": {
         "name": "Noah Dunnagan"
@@ -20,7 +20,7 @@
     {
       "name": "workflow",
       "source": "./plugins/workflow",
-      "description": "Push and session commands — conventional commits and session logging.",
+      "description": "Push and session commands \u2014 conventional commits and session logging.",
       "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
@@ -29,7 +29,7 @@
     {
       "name": "rust-guide",
       "source": "./plugins/rust-guide",
-      "description": "Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it.",
+      "description": "Opinionated Rust style guide \u2014 makes AI-written Rust code look like a human wrote it.",
       "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
@@ -56,7 +56,7 @@
     {
       "name": "distill",
       "source": "./plugins/distill",
-      "description": "Rigorous code refactoring — every line earns its place. Preserves functionality, removes everything that doesn't justify its existence.",
+      "description": "Rigorous code refactoring \u2014 every line earns its place. Preserves functionality, removes everything that doesn't justify its existence.",
       "version": "1.1.0",
       "author": {
         "name": "Noah Dunnagan"
@@ -92,7 +92,7 @@
     {
       "name": "tech-stack",
       "source": "./plugins/tech-stack",
-      "description": "The canonical, opinionated tech stack for new projects — TanStack web, Rust backends, Railway-first, self-hosted data. Always active when scaffolding or choosing technology.",
+      "description": "The canonical, opinionated tech stack for new projects \u2014 TanStack web, Rust backends, Railway-first, self-hosted data. Always active when scaffolding or choosing technology.",
       "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
@@ -101,7 +101,7 @@
     {
       "name": "fable",
       "source": "./plugins/fable",
-      "description": "Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to Opus 4.8 and Sonnet 5 subagents. Fable executes only what's hard or high-stakes, or what the user asks it to.",
+      "description": "Get the most out of Claude Fable 5 \u2014 Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to Opus 4.8 and Sonnet 5 subagents. Fable executes only what's hard or high-stakes, or what the user asks it to.",
       "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
@@ -119,8 +119,8 @@
     {
       "name": "plainspeak",
       "source": "./plugins/plainspeak",
-      "description": "Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. Always on via a SessionStart hook that injects it into every session.",
-      "version": "1.0.0",
+      "description": "Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. One strong line first, depth on request. Always on via a SessionStart hook that injects it into every session.",
+      "version": "1.1.0",
       "author": {
         "name": "Noah Dunnagan"
       }
