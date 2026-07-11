@@ -1,6 +1,6 @@
 {
   "name": "plainspeak",
-  "description": "Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. Length scales with information, not effort.",
+  "description": "Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. Always on via a SessionStart hook that injects it into every session.",
   "version": "1.0.0",
   "author": {
     "name": "Noah Dunnagan"
