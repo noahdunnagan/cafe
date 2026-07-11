@@ -18,6 +18,7 @@ Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `tech-stack` | Skill | The canonical, opinionated tech stack for new projects — TanStack web, Rust backends, Railway-first, self-hosted data. Always active when choosing technology. |
 | `fable` | Skill | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Delegation ladder, workflow model-override gotchas, effort tuning, API reference. |
 | `todo` | Skill + Command | Turn "this needs to be done" into a terse GitHub issue on any repo. Title carries the todo, body only when the title can't. |
+| `plainspeak` | Skill + Hook | Conversational style. Kills AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. A SessionStart hook injects it into every session, so it's always on with zero invocation. |
 
 ## Install
 
@@ -37,6 +38,7 @@ Add the marketplace and install what you want:
 /plugin install tech-stack@cafe
 /plugin install fable@cafe
 /plugin install todo@cafe
+/plugin install plainspeak@cafe
 ```
 
 The `clog` plugin assumes the `clog` binary is on your `$PATH`. See [noahdunnagan/clog](https://github.com/noahdunnagan/clog) for install.
