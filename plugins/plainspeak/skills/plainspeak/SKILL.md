@@ -1,6 +1,6 @@
 ---
 name: plainspeak
-description: Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. Length scales with information, not effort. Always active. Invoke at session start and follow for every reply to a human.
+description: Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. Length scales with information, not effort. Always on. The plugin's SessionStart hook injects this into every session; follow it for every reply to a human.
 user-invocable: false
 disable-model-invocation: false
 ---
