@@ -26,6 +26,14 @@ fn main() {
             let _ = outro_cancel("Cancelled — nothing changed.");
             0
         }
+        // cliclack returns NotConnected when there's no interactive terminal.
+        Err(e) if e.kind() == ErrorKind::NotConnected => {
+            eprintln!(
+                "cafe needs an interactive terminal — run it directly in one, \
+                 not piped, redirected, or from CI."
+            );
+            1
+        }
         Err(e) => {
             let _ = log::error(e.to_string());
             1
@@ -36,17 +44,35 @@ fn main() {
 
 fn run() -> io::Result<()> {
     let args: Vec<String> = env::args().skip(1).collect();
-    match args.first().map(String::as_str) {
+
+    // Help and version win from any position, so `cafe install --help` shows
+    // help instead of dropping the user into the live installer.
+    if args.iter().any(|a| a == "-h" || a == "--help" || a == "help") {
+        help();
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "-V" || a == "--version") {
+        println!("cafe {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    let cmd = args.first().map(String::as_str);
+    // None of the commands take arguments — reject stray ones loudly rather than
+    // silently ignoring them (so `cafe list junk` doesn't look like it worked).
+    if matches!(cmd, Some("install" | "list" | "ls" | "update" | "clean" | "uninstall"))
+        && args.len() > 1
+    {
+        eprintln!("cafe: `{}` takes no arguments (got `{}`)", cmd.unwrap(), args[1..].join(" "));
+        std::process::exit(2);
+    }
+
+    match cmd {
         None => menu(),
         Some("install") => install(),
         Some("list" | "ls") => list(),
         Some("update") => update(),
-        Some("uninstall") => uninstall(),
         Some("clean") => clean(),
-        Some("-h" | "--help" | "help") => {
-            help();
-            Ok(())
-        }
+        Some("uninstall") => uninstall(),
         Some(other) => {
             eprintln!("cafe: unknown command '{other}'\n");
             help();
@@ -112,47 +138,80 @@ fn install() -> io::Result<()> {
     sp.start("Linking…");
     let mut linked = 0usize;
     let mut skipped: Vec<String> = Vec::new();
-    for &pi in &picked {
-        for &ai in &targets {
-            let (n, sk) = install_plugin(&plugins[pi], &agents[ai])?;
-            linked += n;
-            skipped.extend(sk);
+    let mut failures: Vec<String> = Vec::new();
+    // One agent's permission error shouldn't abandon the rest — collect and go on.
+    for &ai in &targets {
+        for &pi in &picked {
+            match install_plugin(&plugins[pi], &agents[ai], &c.root) {
+                Ok((n, sk)) => {
+                    linked += n;
+                    skipped.extend(sk);
+                }
+                Err(e) => failures.push(format!("{}: {e}", agents[ai].label)),
+            }
         }
     }
     sp.stop(format!("Linked {linked} item(s)."));
 
+    if !failures.is_empty() {
+        log::warning(format!(
+            "Couldn't link {} item(s):\n  {}",
+            failures.len(),
+            failures.join("\n  ")
+        ))?;
+    }
     if !skipped.is_empty() {
         log::warning(format!(
-            "Skipped {} path(s) that exist and aren't cafe links:\n  {}",
+            "Left {} path(s) alone (a real file or a non-cafe link is already there):\n  {}",
             skipped.len(),
             skipped.join("\n  ")
         ))?;
     }
-    // Self-heal: drop links whose skill was removed upstream since last install.
+    // Self-heal: drop links whose skill was removed upstream. `collect_cafe_links`
+    // with include_live=false only ever returns dangling links into this checkout,
+    // so removing them without a prompt is safe (they're already broken).
     let touched: Vec<PathBuf> = targets
         .iter()
         .flat_map(|&i| [agents[i].skills.clone(), agents[i].commands.clone()])
         .flatten()
         .collect();
-    let pruned = stale_cafe_links(&touched, &c.root);
+    let pruned = collect_cafe_links(&touched, Some(&c.root), false);
     for p in &pruned {
         let _ = fs::remove_file(p);
     }
     if !pruned.is_empty() {
         log::info(format!("Cleaned {} dead link(s) from removed skills.", pruned.len()))?;
     }
+
+    // Flag agents the user opted into that aren't actually on this machine, so a
+    // fat-fingered toggle doesn't silently provision a stray dir tree.
+    let undetected: Vec<&str> =
+        targets.iter().map(|&i| &agents[i]).filter(|a| !a.detected).map(|a| a.label).collect();
+    if !undetected.is_empty() {
+        log::warning(format!(
+            "Also linked into {} agent(s) not detected here: {}. Undo with `cafe uninstall` if that wasn't intended.",
+            undetected.len(),
+            undetected.join(", ")
+        ))?;
+    }
+
     if c.home.join(".cursor").is_dir() || have_bin("cursor") {
         log::remark("Cursor has no global skills dir — it's per-project only, not yet handled here.")?;
     }
-    // Conductor is a runner for Claude Code & Codex, not a separate skills store —
-    // installing those already reaches its / menu. Say so instead of pretending
-    // there's a Conductor target to link into.
-    if conductor_present(&c.home)
-        && targets.iter().any(|&i| matches!(agents[i].label, "Claude Code" | "Codex CLI"))
-    {
+    // The real duplicate trap: cafe is ALSO installed as a Claude plugin, so every
+    // command shows up twice. Warn only when that's actually the case (not gated on
+    // Conductor, which was the wrong condition).
+    let claude_or_codex =
+        targets.iter().any(|&i| matches!(agents[i].label, "Claude Code" | "Codex CLI"));
+    if claude_or_codex && c.home.join(".claude/plugins/marketplaces/cafe").exists() {
+        log::warning(
+            "cafe is also installed via /plugin, so every command will appear twice. Remove one \
+             side:  /plugin marketplace remove cafe   (or `cafe uninstall`).",
+        )?;
+    }
+    if claude_or_codex && conductor_present(&c.home) {
         log::info(
-            "Conductor detected — it runs Claude Code & Codex, so these show up in its / menu \
-             automatically. If you also added cafe via /plugin, each command appears twice; keep one.",
+            "Conductor runs Claude Code & Codex, so these show up in its / menu automatically.",
         )?;
     }
 
@@ -174,40 +233,56 @@ fn list() -> io::Result<()> {
 fn update() -> io::Result<()> {
     let c = ctx()?;
     intro("cafe · update")?;
+    // A ZIP download has the manifest but no .git — the most likely update fail.
+    if !c.root.join(".git").exists() {
+        outro_cancel(
+            "This copy of cafe isn't a git clone, so it can't update itself. \
+             Re-install by cloning the repo instead of downloading the ZIP.",
+        )?;
+        return Ok(());
+    }
     let sp = spinner();
     sp.start("git pull…");
-    let out = std::process::Command::new("git")
+    let out = match std::process::Command::new("git")
         .arg("-C")
         .arg(&c.root)
         .args(["pull", "--ff-only"])
-        .output()?;
+        .output()
+    {
+        Ok(out) => out,
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            sp.error("can't run git");
+            return Err(io::Error::other(
+                "Git isn't installed (or not on PATH). Install git, then run `cafe update` again.",
+            ));
+        }
+        Err(e) => {
+            sp.error("couldn't start git");
+            return Err(e);
+        }
+    };
     if out.status.success() {
         sp.stop("Updated. Every linked agent now sees the latest skills.");
-        let msg = String::from_utf8_lossy(&out.stdout);
-        log::info(msg.trim())?;
+        log::info(String::from_utf8_lossy(&out.stdout).trim())?;
         outro("Done.")?;
         Ok(())
     } else {
-        sp.stop("git pull failed");
+        sp.error("git pull failed");
         log::error(String::from_utf8_lossy(&out.stderr).trim())?;
+        log::info(
+            "If you edited files inside the clone, stash or discard them and retry. \
+             Still stuck? Delete the folder and re-clone.",
+        )?;
         Err(io::Error::other("git pull failed"))
     }
 }
 
 fn uninstall() -> io::Result<()> {
-    let c = ctx()?;
-    let root = fs::canonicalize(&c.root)?;
-    let agents = agents(&c.home);
-    let mut victims: Vec<PathBuf> = Vec::new();
-    for a in &agents {
-        for dir in [a.skills.as_ref(), a.commands.as_ref()].into_iter().flatten() {
-            for entry in read_all(dir) {
-                if is_cafe_link(&entry, &root) {
-                    victims.push(entry);
-                }
-            }
-        }
-    }
+    let home = home()?;
+    // Don't require a live checkout: uninstall must still work after the user
+    // deleted the clone (which leaves dangling links behind).
+    let root = cafe_root().ok();
+    let victims = collect_cafe_links(&agent_dirs(&home), root.as_deref(), true);
     intro("cafe · uninstall")?;
     if victims.is_empty() {
         outro("No cafe links found — nothing to remove.")?;
@@ -233,13 +308,10 @@ fn uninstall() -> io::Result<()> {
 /// Remove dead cafe links — orphans left after a skill was renamed or removed
 /// upstream (install and update don't prune on their own).
 fn clean() -> io::Result<()> {
-    let c = ctx()?;
-    let dirs: Vec<PathBuf> = agents(&c.home)
-        .into_iter()
-        .flat_map(|a| [a.skills, a.commands])
-        .flatten()
-        .collect();
-    let stale = stale_cafe_links(&dirs, &c.root);
+    let home = home()?;
+    // Works even if the checkout is gone — dead links are what we're after.
+    let root = cafe_root().ok();
+    let stale = collect_cafe_links(&agent_dirs(&home), root.as_deref(), false);
     intro("cafe · clean")?;
     if stale.is_empty() {
         outro("No dead links — nothing to clean.")?;
@@ -275,6 +347,7 @@ USAGE
   cafe clean          remove dead links left by removed/renamed skills
   cafe uninstall      remove cafe's links
   cafe --help         this help
+  cafe --version      print the version
 
 Skills install as symlinks back into this checkout, so one update reaches
 every agent. Run inside the clone, or set CAFE_HOME to point at it."
@@ -293,24 +366,51 @@ fn ctx() -> io::Result<Ctx> {
 }
 
 fn home() -> io::Result<PathBuf> {
+    // An empty or relative HOME (e.g. `env HOME= cafe install`) would make every
+    // agent path resolve under the cwd — refuse it rather than trash the cwd.
     env::var_os("HOME")
         .map(PathBuf::from)
-        .ok_or_else(|| io::Error::new(ErrorKind::NotFound, "HOME is not set"))
+        .filter(|p| p.is_absolute())
+        .ok_or_else(|| io::Error::new(ErrorKind::NotFound, "HOME is not set to an absolute path"))
+}
+
+/// A directory is the cafe checkout if it carries the marketplace manifest and
+/// that manifest names "cafe" (so an unrelated Claude marketplace isn't mistaken
+/// for it, which would make `cafe update` pull the wrong repo).
+fn is_cafe_checkout(dir: &Path) -> bool {
+    fs::read_to_string(dir.join(MARKER))
+        .ok()
+        .and_then(|t| json_str(&t, "name"))
+        .map(|n| n == "cafe")
+        .unwrap_or(false)
+}
+
+/// Canonicalize so link targets and later link-matching use one path spelling
+/// (immune to a convenience symlink like ~/cafe -> ~/dev/cafe). Falls back to the
+/// raw path if canonicalize fails.
+fn canonical(p: PathBuf) -> PathBuf {
+    fs::canonicalize(&p).unwrap_or(p)
 }
 
 /// Locate the cafe checkout: $CAFE_HOME, then walk up from cwd, then the repo
 /// this binary was built in (so `cargo install --path cli` keeps working).
 fn cafe_root() -> io::Result<PathBuf> {
+    // An explicit override wins — but if it's wrong, say so instead of silently
+    // operating on some other checkout found by the fallbacks below.
     if let Some(p) = env::var_os("CAFE_HOME") {
         let p = PathBuf::from(p);
-        if p.join(MARKER).exists() {
-            return Ok(p);
+        if is_cafe_checkout(&p) {
+            return Ok(canonical(p));
         }
+        return Err(io::Error::new(
+            ErrorKind::NotFound,
+            format!("CAFE_HOME ({}) isn't a cafe checkout — it has no cafe {MARKER}.", p.display()),
+        ));
     }
     if let Ok(mut dir) = env::current_dir() {
         loop {
-            if dir.join(MARKER).exists() {
-                return Ok(dir);
+            if is_cafe_checkout(&dir) {
+                return Ok(canonical(dir));
             }
             if !dir.pop() {
                 break;
@@ -318,8 +418,8 @@ fn cafe_root() -> io::Result<PathBuf> {
         }
     }
     if let Some(built) = Path::new(env!("CARGO_MANIFEST_DIR")).parent() {
-        if built.join(MARKER).exists() {
-            return Ok(built.to_path_buf());
+        if is_cafe_checkout(built) {
+            return Ok(canonical(built.to_path_buf()));
         }
     }
     Err(io::Error::new(
@@ -427,11 +527,11 @@ fn agents(home: &Path) -> Vec<Agent> {
 // ---------------------------------------------------------------- file ops
 
 /// Link one plugin's skills + commands into one agent. Returns (linked, skipped).
-fn install_plugin(p: &Plugin, a: &Agent) -> io::Result<(usize, Vec<String>)> {
+fn install_plugin(p: &Plugin, a: &Agent, root: &Path) -> io::Result<(usize, Vec<String>)> {
     let mut linked = 0;
     let mut skipped = Vec::new();
     let mut place = |src: &Path, dest: PathBuf| -> io::Result<()> {
-        match link(src, &dest)? {
+        match link(src, &dest, root)? {
             true => linked += 1,
             false => skipped.push(dest.display().to_string()),
         }
@@ -455,49 +555,81 @@ fn install_plugin(p: &Plugin, a: &Agent) -> io::Result<(usize, Vec<String>)> {
     Ok((linked, skipped))
 }
 
-/// Symlink src -> dest. Refreshes an existing symlink; never clobbers a real
-/// file/dir (returns false = skipped).
-fn link(src: &Path, dest: &Path) -> io::Result<bool> {
-    if let Ok(meta) = fs::symlink_metadata(dest) {
-        if meta.file_type().is_symlink() {
+/// Symlink src -> dest. Refreshes a link cafe owns, but never touches a real
+/// file OR a foreign symlink (someone else's) — those return false = skipped, so
+/// the caller can surface them. Errors carry the offending path.
+fn link(src: &Path, dest: &Path, root: &Path) -> io::Result<bool> {
+    if fs::symlink_metadata(dest).is_ok() {
+        if is_cafe_owned(dest, root) {
             fs::remove_file(dest)?;
         } else {
-            return Ok(false);
+            return Ok(false); // real file or someone else's link — leave it alone
         }
     }
     if let Some(parent) = dest.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent)
+            .map_err(|e| io::Error::new(e.kind(), format!("{}: {e}", parent.display())))?;
     }
-    symlink(src, dest)?;
+    symlink(src, dest).map_err(|e| io::Error::new(e.kind(), format!("{}: {e}", dest.display())))?;
     Ok(true)
 }
 
-/// A symlink whose resolved target lives inside the cafe checkout.
-fn is_cafe_link(p: &Path, root: &Path) -> bool {
-    fs::symlink_metadata(p).map(|m| m.file_type().is_symlink()).unwrap_or(false)
-        && fs::canonicalize(p).map(|t| t.starts_with(root)).unwrap_or(false)
+/// A symlink cafe created into `root` — live (resolves under root) or now-dangling
+/// (raw target under root but its source is gone). NOT a real file and NOT a
+/// foreign symlink. Falls back to the raw target because canonicalize fails on a
+/// dangling link.
+fn is_cafe_owned(p: &Path, root: &Path) -> bool {
+    if !fs::symlink_metadata(p).map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+        return false;
+    }
+    if fs::canonicalize(p).map(|t| t.starts_with(root)).unwrap_or(false) {
+        return true;
+    }
+    fs::read_link(p).map(|t| t.starts_with(root) && !t.exists()).unwrap_or(false)
 }
 
-/// Cafe symlinks pointing into this checkout whose source no longer exists —
-/// orphans from an upstream rename/removal. Uses the raw link target (not
-/// canonicalize, which fails on a dangling link) so dead links are caught.
-fn stale_cafe_links(dirs: &[PathBuf], root: &Path) -> Vec<PathBuf> {
-    let mut stale = Vec::new();
+/// A dangling target with cafe's layout (…/plugins/<x>/skills|commands/<y>). Used
+/// only when the checkout is gone, so uninstall/clean can still sweep dead links
+/// with no root to match against.
+fn looks_cafe_shaped(target: &Path) -> bool {
+    let s = target.to_string_lossy();
+    s.contains("/plugins/") && (s.contains("/skills/") || s.contains("/commands/"))
+}
+
+/// Cafe symlinks across `dirs`. `include_live` adds still-good links (uninstall);
+/// otherwise only dead ones (clean / install self-heal). With a `root` we match
+/// precisely; without one (checkout deleted) we fall back to layout shape for
+/// dead links only — always safe, since those are already broken.
+fn collect_cafe_links(dirs: &[PathBuf], root: Option<&Path>, include_live: bool) -> Vec<PathBuf> {
+    let mut out = Vec::new();
     for dir in dirs {
-        for entry in read_all(dir) {
-            let is_link =
-                fs::symlink_metadata(&entry).map(|m| m.file_type().is_symlink()).unwrap_or(false);
-            if !is_link {
+        for p in read_all(dir) {
+            if !fs::symlink_metadata(&p).map(|m| m.file_type().is_symlink()).unwrap_or(false) {
                 continue;
             }
-            if let Ok(target) = fs::read_link(&entry) {
-                if target.starts_with(root) && !target.exists() {
-                    stale.push(entry);
-                }
+            let Ok(target) = fs::read_link(&p) else { continue };
+            let dangling = !p.exists();
+            let live = include_live
+                && !dangling
+                && root
+                    .map(|r| fs::canonicalize(&p).map(|t| t.starts_with(r)).unwrap_or(false))
+                    .unwrap_or(false);
+            let dead = dangling
+                && match root {
+                    Some(r) => target.starts_with(r),
+                    None => looks_cafe_shaped(&target),
+                };
+            if live || dead {
+                out.push(p);
             }
         }
     }
-    stale
+    out
+}
+
+/// Every agent's skills + commands dir — the search space for link cleanup.
+fn agent_dirs(home: &Path) -> Vec<PathBuf> {
+    agents(home).into_iter().flat_map(|a| [a.skills, a.commands]).flatten().collect()
 }
 
 // ---------------------------------------------------------------- helpers
@@ -555,28 +687,34 @@ mod tests {
     }
 
     #[test]
-    fn link_creates_and_refreshes_but_never_clobbers_real_files() {
+    fn link_refreshes_cafe_links_but_spares_real_files_and_foreign_links() {
         let base = scratch("link");
-        let src = base.join("src");
+        let root = base.join("cafe");
+        let src = root.join("plugins/p/skills/x");
         fs::create_dir_all(&src).unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let out = base.join("out");
+        fs::create_dir_all(&out).unwrap();
 
-        // fresh link
-        let dest = base.join("out/link");
-        assert!(link(&src, &dest).unwrap(), "fresh link should be created");
-        assert!(fs::symlink_metadata(&dest).unwrap().file_type().is_symlink());
+        // fresh cafe link, then a refresh of our own link
+        let dest = out.join("x");
+        assert!(link(&src, &dest, &rootc).unwrap(), "fresh link created");
+        assert!(is_cafe_owned(&dest, &rootc));
+        assert!(link(&src, &dest, &rootc).unwrap(), "cafe link refreshed in place");
 
-        // re-linking an existing symlink refreshes it (still true = linked)
-        assert!(link(&src, &dest).unwrap(), "existing symlink should refresh");
-
-        // a real file at the destination must never be clobbered
-        let real = base.join("real.md");
+        // a real file is never clobbered
+        let real = out.join("real");
         fs::write(&real, "keep me").unwrap();
-        assert!(!link(&src, &real).unwrap(), "real file should be skipped");
+        assert!(!link(&src, &real, &rootc).unwrap(), "real file left alone");
         assert_eq!(fs::read_to_string(&real).unwrap(), "keep me");
 
-        // is_cafe_link only matches symlinks pointing inside root
-        assert!(is_cafe_link(&dest, &fs::canonicalize(&base).unwrap()));
-        assert!(!is_cafe_link(&real, &fs::canonicalize(&base).unwrap()));
+        // a foreign symlink (points outside the checkout) is left alone too
+        let mine = base.join("mine");
+        fs::write(&mine, "user data").unwrap();
+        let foreign = out.join("foreign");
+        symlink(&mine, &foreign).unwrap();
+        assert!(!link(&src, &foreign, &rootc).unwrap(), "foreign symlink left alone");
+        assert_eq!(fs::read_link(&foreign).unwrap(), mine, "foreign target untouched");
 
         fs::remove_dir_all(&base).unwrap();
     }
@@ -584,12 +722,9 @@ mod tests {
     #[test]
     fn install_plugin_links_real_skill_and_command_into_agent_dirs() {
         // Use this repo's own blueprint plugin (1 skill + 1 command).
-        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-        let plugin = Plugin {
-            name: "blueprint".into(),
-            desc: String::new(),
-            dir: repo.join("plugins/blueprint"),
-        };
+        let repo = fs::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()).unwrap();
+        let plugin =
+            Plugin { name: "blueprint".into(), desc: String::new(), dir: repo.join("plugins/blueprint") };
         let base = scratch("install");
         let agent = Agent {
             label: "fake",
@@ -598,36 +733,44 @@ mod tests {
             detected: true,
         };
 
-        let (linked, skipped) = install_plugin(&plugin, &agent).unwrap();
+        let (linked, skipped) = install_plugin(&plugin, &agent, &repo).unwrap();
         assert_eq!(skipped.len(), 0);
         assert_eq!(linked, 2, "one skill dir + one command file");
 
         let skill = base.join("skills/blueprint");
         assert!(skill.join("SKILL.md").is_file(), "skill symlink resolves to real SKILL.md");
-        assert!(is_cafe_link(&skill, &fs::canonicalize(repo).unwrap()));
+        assert!(is_cafe_owned(&skill, &repo));
         assert!(base.join("commands").read_dir().unwrap().next().is_some(), "command was linked");
 
         fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]
-    fn stale_cafe_links_flags_only_dead_links() {
-        let base = scratch("stale");
+    fn collect_cafe_links_classifies_live_dead_and_foreign() {
+        let base = scratch("collect");
         let root = base.join("cafe");
         let src = root.join("plugins/x/skills/live");
         fs::create_dir_all(&src).unwrap();
-        let agentdir = base.join("agent/skills");
-        fs::create_dir_all(&agentdir).unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let dir = base.join("agent/skills");
+        fs::create_dir_all(&dir).unwrap();
 
-        // one live link (source exists) and one dead link (source removed)
-        let live = agentdir.join("live");
-        let dead = agentdir.join("dead");
-        symlink(&src, &live).unwrap();
-        symlink(root.join("plugins/x/skills/gone"), &dead).unwrap();
+        let live = dir.join("live");
+        let dead = dir.join("dead");
+        let foreign = dir.join("foreign");
+        symlink(&src, &live).unwrap(); // resolves under root
+        symlink(rootc.join("plugins/x/skills/gone"), &dead).unwrap(); // dangling, under root
+        let mine = base.join("mine");
+        fs::write(&mine, "x").unwrap();
+        symlink(&mine, &foreign).unwrap(); // not cafe's
 
-        let stale = stale_cafe_links(&[agentdir.clone()], &root);
-        assert_eq!(stale, vec![dead], "only the dead link is flagged");
-        assert!(live.exists(), "live link untouched");
+        // dead only (clean / self-heal)
+        assert_eq!(collect_cafe_links(&[dir.clone()], Some(&rootc), false), vec![dead.clone()]);
+        // live + dead, foreign excluded (uninstall)
+        let both = collect_cafe_links(&[dir.clone()], Some(&rootc), true);
+        assert!(both.contains(&live) && both.contains(&dead) && !both.contains(&foreign));
+        // checkout gone (root None): dead cafe-shaped link still caught by layout
+        assert_eq!(collect_cafe_links(&[dir.clone()], None, false), vec![dead]);
 
         fs::remove_dir_all(&base).unwrap();
     }
