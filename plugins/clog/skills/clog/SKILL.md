@@ -1,6 +1,6 @@
 ---
 name: clog
-description: Search Claude Code chat history (past sessions, threads, conversations) via the `clog` CLI. Use when the user asks to find an old session, recall what was discussed about something, look up which branch or repo a chat was on, count sessions by topic, or pull message text from an archived conversation. Triggers include "find that session", "search my chats", "what did we discuss about X", "look up the conversation where", "which chat covered X", "claude history", "past sessions", "remember when we worked on", "find sessions about".
+description: cafe · Search Claude Code chat history (past sessions, threads, conversations) via the `clog` CLI. Use when the user asks to find an old session, recall what was discussed about something, look up which branch or repo a chat was on, count sessions by topic, or pull message text from an archived conversation. Triggers include "find that session", "search my chats", "what did we discuss about X", "look up the conversation where", "which chat covered X", "claude history", "past sessions", "remember when we worked on", "find sessions about".
 allowed-tools:
   - Bash
 ---

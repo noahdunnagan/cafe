@@ -1,7 +1,7 @@
 ---
 name: distill
 command: distill
-description: [cafe] Refactor code so every line earns its place. Functionality stays identical. Complexity gets cut.
+description: cafe · Refactor code so every line earns its place. Functionality stays identical. Complexity gets cut.
 ---
 
 You are performing a distillation pass. Activate the distill skill.

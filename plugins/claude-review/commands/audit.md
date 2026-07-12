@@ -1,7 +1,7 @@
 ---
 name: code-audit
 command: audit
-description: [cafe] Audit a directory for security, performance, safety, and cleanup issues. Applies real fixes only — no churn. Opens a PR if there are real fixes, otherwise reports clean. Usage: /audit <path> (defaults to repo root).
+description: cafe · Audit a directory for security, performance, safety, and cleanup issues. Applies real fixes only — no churn. Opens a PR if there are real fixes, otherwise reports clean. Usage: /audit <path> (defaults to repo root).
 ---
 
 You are auditing a codebase for real, concrete improvements. Be conservative. Apply real wins only.

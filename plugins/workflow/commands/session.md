@@ -1,3 +1,9 @@
+---
+name: session-log
+command: session
+description: cafe · Update SESSION.md from the recent git diff and commit history — a running log of what changed this session.
+---
+
 # Session Log
 
 Read the current session log at `SESSION.md` in the project root (create it if it doesn't exist).
