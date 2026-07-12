@@ -20,11 +20,14 @@ cafe            # interactive menu
 cafe install    # browse skills, pick agents, link them in
 cafe list       # every skill + description
 cafe update     # git pull — refreshes every linked agent at once
+cafe clean      # remove dead links left by renamed/removed skills
 cafe uninstall  # remove cafe's links (leaves your own files alone)
 ```
 
 Skills install as symlinks back into the checkout, so a single `cafe update`
-reaches every agent.
+reaches every agent. Re-running `cafe install` is safe — links have fixed names,
+so it refreshes in place instead of duplicating, and self-prunes dead links.
+`cafe clean` does that prune on demand across every agent.
 
 ## Conductor
 

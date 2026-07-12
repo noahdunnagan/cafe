@@ -42,6 +42,7 @@ fn run() -> io::Result<()> {
         Some("list" | "ls") => list(),
         Some("update") => update(),
         Some("uninstall") => uninstall(),
+        Some("clean") => clean(),
         Some("-h" | "--help" | "help") => {
             help();
             Ok(())
@@ -61,6 +62,7 @@ fn menu() -> io::Result<()> {
         .item("install".into(), "Install skills into your AI agents", "browse & pick")
         .item("list".into(), "List available skills", "")
         .item("update".into(), "Update everything", "git pull")
+        .item("clean".into(), "Remove dead links from removed skills", "")
         .item("uninstall".into(), "Remove cafe's links", "")
         .item("quit".into(), "Quit", "")
         .interact()?;
@@ -68,6 +70,7 @@ fn menu() -> io::Result<()> {
         "install" => install(),
         "list" => list(),
         "update" => update(),
+        "clean" => clean(),
         "uninstall" => uninstall(),
         _ => Ok(()),
     }
@@ -124,6 +127,19 @@ fn install() -> io::Result<()> {
             skipped.len(),
             skipped.join("\n  ")
         ))?;
+    }
+    // Self-heal: drop links whose skill was removed upstream since last install.
+    let touched: Vec<PathBuf> = targets
+        .iter()
+        .flat_map(|&i| [agents[i].skills.clone(), agents[i].commands.clone()])
+        .flatten()
+        .collect();
+    let pruned = stale_cafe_links(&touched, &c.root);
+    for p in &pruned {
+        let _ = fs::remove_file(p);
+    }
+    if !pruned.is_empty() {
+        log::info(format!("Cleaned {} dead link(s) from removed skills.", pruned.len()))?;
     }
     if c.home.join(".cursor").is_dir() || have_bin("cursor") {
         log::remark("Cursor has no global skills dir — it's per-project only, not yet handled here.")?;
@@ -214,6 +230,38 @@ fn uninstall() -> io::Result<()> {
     Ok(())
 }
 
+/// Remove dead cafe links — orphans left after a skill was renamed or removed
+/// upstream (install and update don't prune on their own).
+fn clean() -> io::Result<()> {
+    let c = ctx()?;
+    let dirs: Vec<PathBuf> = agents(&c.home)
+        .into_iter()
+        .flat_map(|a| [a.skills, a.commands])
+        .flatten()
+        .collect();
+    let stale = stale_cafe_links(&dirs, &c.root);
+    intro("cafe · clean")?;
+    if stale.is_empty() {
+        outro("No dead links — nothing to clean.")?;
+        return Ok(());
+    }
+    note(
+        "Dead cafe links (their skill no longer exists)",
+        stale.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"),
+    )?;
+    if !confirm(format!("Remove {} dead link(s)?", stale.len())).interact()? {
+        return Err(io::Error::new(ErrorKind::Interrupted, "cancelled"));
+    }
+    let mut n = 0;
+    for p in &stale {
+        if fs::remove_file(p).is_ok() {
+            n += 1;
+        }
+    }
+    outro(format!("Removed {n} dead link(s)."))?;
+    Ok(())
+}
+
 fn help() {
     println!(
         "\
@@ -224,6 +272,7 @@ USAGE
   cafe install        browse skills and install into your agents
   cafe list           list available skills with descriptions
   cafe update         git pull — refreshes every linked agent at once
+  cafe clean          remove dead links left by removed/renamed skills
   cafe uninstall      remove cafe's links
   cafe --help         this help
 
@@ -429,6 +478,28 @@ fn is_cafe_link(p: &Path, root: &Path) -> bool {
         && fs::canonicalize(p).map(|t| t.starts_with(root)).unwrap_or(false)
 }
 
+/// Cafe symlinks pointing into this checkout whose source no longer exists —
+/// orphans from an upstream rename/removal. Uses the raw link target (not
+/// canonicalize, which fails on a dangling link) so dead links are caught.
+fn stale_cafe_links(dirs: &[PathBuf], root: &Path) -> Vec<PathBuf> {
+    let mut stale = Vec::new();
+    for dir in dirs {
+        for entry in read_all(dir) {
+            let is_link =
+                fs::symlink_metadata(&entry).map(|m| m.file_type().is_symlink()).unwrap_or(false);
+            if !is_link {
+                continue;
+            }
+            if let Ok(target) = fs::read_link(&entry) {
+                if target.starts_with(root) && !target.exists() {
+                    stale.push(entry);
+                }
+            }
+        }
+    }
+    stale
+}
+
 // ---------------------------------------------------------------- helpers
 
 fn json_str(txt: &str, key: &str) -> Option<String> {
@@ -535,6 +606,28 @@ mod tests {
         assert!(skill.join("SKILL.md").is_file(), "skill symlink resolves to real SKILL.md");
         assert!(is_cafe_link(&skill, &fs::canonicalize(repo).unwrap()));
         assert!(base.join("commands").read_dir().unwrap().next().is_some(), "command was linked");
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn stale_cafe_links_flags_only_dead_links() {
+        let base = scratch("stale");
+        let root = base.join("cafe");
+        let src = root.join("plugins/x/skills/live");
+        fs::create_dir_all(&src).unwrap();
+        let agentdir = base.join("agent/skills");
+        fs::create_dir_all(&agentdir).unwrap();
+
+        // one live link (source exists) and one dead link (source removed)
+        let live = agentdir.join("live");
+        let dead = agentdir.join("dead");
+        symlink(&src, &live).unwrap();
+        symlink(root.join("plugins/x/skills/gone"), &dead).unwrap();
+
+        let stale = stale_cafe_links(&[agentdir.clone()], &root);
+        assert_eq!(stale, vec![dead], "only the dead link is flagged");
+        assert!(live.exists(), "live link untouched");
 
         fs::remove_dir_all(&base).unwrap();
     }
