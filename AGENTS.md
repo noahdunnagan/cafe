@@ -11,13 +11,11 @@ Gemini CLI, opencode, Zed, Windsurf, Cline, Kilo, Amp and others read natively.
 
 ```sh
 git clone <this repo> && cd cafe
-./install.sh            # symlinks every skill + command into each agent on this machine
-./install.sh --dry-run  # preview without touching anything
-./install.sh --project .   # install into a single repo's per-project agent dirs (e.g. Cursor)
+cargo install --path cli   # then run `cafe` to browse and link skills into every agent
 ```
 
-Symlinks point back into this checkout, so `git -C <cafe> pull` updates every agent
-at once. Use `--copy` where symlinks aren't available (Windows).
+Skills install as symlinks back into this checkout, so `cafe update` (or
+`git -C <cafe> pull`) refreshes every agent at once. Requires Rust; Unix-only.
 
 ## Skills (auto-invoke by description; also runnable as `/name`)
 
