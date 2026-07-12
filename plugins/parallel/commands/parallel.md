@@ -1,7 +1,7 @@
 ---
 name: parallel
 command: parallel
-description: cafe · Launch and track parallel work in isolated git worktrees. Usage: /parallel <task>, /parallel status, /parallel merge <id>, /parallel cancel <id>, /parallel clean.
+description: ☕️ cafe · Launch and track parallel work in isolated git worktrees. Usage: /parallel <task>, /parallel status, /parallel merge <id>, /parallel cancel <id>, /parallel clean.
 ---
 
 You are managing parallel work streams. Activate the parallel skill.

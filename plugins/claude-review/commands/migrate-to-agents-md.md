@@ -1,7 +1,7 @@
 ---
 name: migrate-to-agents-md
 command: migrate-to-agents-md
-description: cafe · Rename every `CLAUDE.md` in the repo to the vendor-neutral `AGENTS.md` convention, symlink `CLAUDE.md → AGENTS.md` so Claude Code still finds them, and update doc references. One commit, mechanical.
+description: ☕️ cafe · Rename every `CLAUDE.md` in the repo to the vendor-neutral `AGENTS.md` convention, symlink `CLAUDE.md → AGENTS.md` so Claude Code still finds them, and update doc references. One commit, mechanical.
 ---
 
 You are migrating a repository from Claude-specific `CLAUDE.md` config files to the vendor-neutral `AGENTS.md` convention. End state: every `CLAUDE.md` is renamed to `AGENTS.md`, a relative symlink at the original path keeps Claude Code working, and any docs that reference the filename are updated.

@@ -1,7 +1,7 @@
 ---
 name: setup-code-review
 command: setup-review
-description: cafe · Install the code-review GitHub Action workflow into the current repo. Opens a PR with the workflow, then instructs the user to create the `review` label and set the `CLAUDE_CODE_OAUTH_TOKEN` secret. Label-gated so it never auto-reviews.
+description: ☕️ cafe · Install the code-review GitHub Action workflow into the current repo. Opens a PR with the workflow, then instructs the user to create the `review` label and set the `CLAUDE_CODE_OAUTH_TOKEN` secret. Label-gated so it never auto-reviews.
 ---
 
 You are installing the code-review GitHub Action workflow into the user's current repository. This is a one-shot setup. The end state: a PR is open with the workflow file, the user knows how to create the `review` label and the `CLAUDE_CODE_OAUTH_TOKEN` secret, and from then on they trigger reviews by adding the `review` label (usually via `/pr`).

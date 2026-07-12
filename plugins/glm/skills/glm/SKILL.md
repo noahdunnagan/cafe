@@ -1,6 +1,6 @@
 ---
 name: glm
-description: cafe · Legacy instructions for delegating work to GLM, a sunset model that runs headless inside Claude Code. Use only when the user explicitly says "/glm", "ask glm", "have glm build/do this", "let glm", or "delegate to glm"; never invoke it automatically for frontend/UI or other work.
+description: ☕️ cafe · Legacy instructions for delegating work to GLM, a sunset model that runs headless inside Claude Code. Use only when the user explicitly says "/glm", "ask glm", "have glm build/do this", "let glm", or "delegate to glm"; never invoke it automatically for frontend/UI or other work.
 allowed-tools:
   - Bash
   - Read

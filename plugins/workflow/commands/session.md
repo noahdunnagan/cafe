@@ -1,7 +1,7 @@
 ---
 name: session-log
 command: session
-description: cafe · Update SESSION.md from the recent git diff and commit history — a running log of what changed this session.
+description: ☕️ cafe · Update SESSION.md from the recent git diff and commit history — a running log of what changed this session.
 ---
 
 # Session Log
