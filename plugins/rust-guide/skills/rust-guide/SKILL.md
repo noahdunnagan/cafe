@@ -1,6 +1,6 @@
 ---
 name: rust-guide
-description: cafe · Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it. Always active when writing Rust.
+description: ☕️ cafe · Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it. Always active when writing Rust.
 user-invocable: false
 disable-model-invocation: false
 ---

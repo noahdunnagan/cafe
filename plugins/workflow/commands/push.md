@@ -1,7 +1,7 @@
 ---
 name: generate-push
 command: push
-description: cafe · Generate a proper conventional commit message from diffs.
+description: ☕️ cafe · Generate a proper conventional commit message from diffs.
 ---
 
 You are assisting with a Git push.

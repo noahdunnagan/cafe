@@ -1,6 +1,6 @@
 ---
 name: tech-stack
-description: cafe · The canonical, opinionated technology stack for any new project — what to reach for, in what order, and what to never touch. Use this whenever a new project starts or a stack decision comes up: scaffolding an app, prototype, dashboard, landing page, or design system, or picking a framework, UI library, database, ORM, auth, hosting, animation lib, or any dependency. Triggers include "new project", "start building", "scaffold", "spin up a site/app", "what should I use for", "which framework/library/database", "set up auth", "add a backend", "where do I deploy", "build a prototype". Always active when choosing or installing technology.
+description: ☕️ cafe · The canonical, opinionated technology stack for any new project — what to reach for, in what order, and what to never touch. Use this whenever a new project starts or a stack decision comes up: scaffolding an app, prototype, dashboard, landing page, or design system, or picking a framework, UI library, database, ORM, auth, hosting, animation lib, or any dependency. Triggers include "new project", "start building", "scaffold", "spin up a site/app", "what should I use for", "which framework/library/database", "set up auth", "add a backend", "where do I deploy", "build a prototype". Always active when choosing or installing technology.
 user-invocable: true
 disable-model-invocation: false
 ---

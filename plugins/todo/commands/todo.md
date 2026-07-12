@@ -1,7 +1,7 @@
 ---
 name: todo
 command: todo
-description: cafe · File a terse GitHub issue for a task. Title carries the todo, body only when the title can't. Usage: /todo <task> [repo or project]
+description: ☕️ cafe · File a terse GitHub issue for a task. Title carries the todo, body only when the title can't. Usage: /todo <task> [repo or project]
 ---
 
 You are filing a todo. Activate the todo skill.

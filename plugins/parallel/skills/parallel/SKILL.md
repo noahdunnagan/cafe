@@ -1,6 +1,6 @@
 ---
 name: parallel
-description: cafe · Launch and track parallel work streams in isolated git worktrees. Prevents duplicate work, tracks active branches, and manages the lifecycle of concurrent tasks. Use when user says "/parallel", "do this in parallel", "work on this separately", or wants to run independent tasks without touching the working tree.
+description: ☕️ cafe · Launch and track parallel work streams in isolated git worktrees. Prevents duplicate work, tracks active branches, and manages the lifecycle of concurrent tasks. Use when user says "/parallel", "do this in parallel", "work on this separately", or wants to run independent tasks without touching the working tree.
 user-invocable: true
 disable-model-invocation: false
 allowed-tools:
