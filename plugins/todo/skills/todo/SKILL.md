@@ -1,6 +1,6 @@
 ---
 name: todo
-description: File a terse GitHub issue to track a task on any repo. Use when the user says "/todo", "this needs to be done", "file a todo", "track this", "make an issue for this", or points at work worth remembering later.
+description: ☕️ cafe · File a terse GitHub issue to track a task on any repo. Use when the user says "/todo", "this needs to be done", "file a todo", "track this", "make an issue for this", or points at work worth remembering later.
 user-invocable: true
 disable-model-invocation: false
 ---
