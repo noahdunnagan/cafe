@@ -1,0 +1,8 @@
+{
+  "name": "todo",
+  "description": "Turn \"this needs to be done\" into a terse GitHub issue on any repo. The title carries the todo, the body exists only when the title can't.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}

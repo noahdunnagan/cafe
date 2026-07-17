@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Delegate research, code review, or collaborative sparring to Codex CLI. Use when user says "/codex", "ask codex", "delegate to codex", "have codex look into", "codex review", "spar with codex", "go back and forth with codex", "use codex to pressure-test", or when a problem is non-trivial enough that a second model's perspective would meaningfully improve the answer.
+description: ☕️ cafe · Delegate research, code review, or collaborative sparring to Codex CLI. Use when user says "/codex", "ask codex", "delegate to codex", "have codex look into", "codex review", "spar with codex", "go back and forth with codex", "use codex to pressure-test", or when a problem is non-trivial enough that a second model's perspective would meaningfully improve the answer.
 allowed-tools:
   - Bash
 ---
