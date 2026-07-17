@@ -1,0 +1,8 @@
+{
+  "name": "architecture",
+  "description": "How systems get laid out. One app by default, siloed apps/* when there are real deployables, named triggers for adding anything. The architect's judgment, encoded, so the person building never has to make a structure decision.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}

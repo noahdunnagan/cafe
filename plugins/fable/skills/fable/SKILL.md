@@ -1,6 +1,6 @@
 ---
 name: fable
-description: ☕️ cafe · Get the most out of Claude Fable 5 — the smartest generally available model, priced and positioned like it. Fable is the architect, not the workhorse: it plans, dictates tasks, evaluates, and verifies, while execution delegates down to GPT-5.6 Sol (headless codex), Sonnet 5, or Haiku 4.5 — Opus 4.8 when the work needs Agent-tool mechanics — unless the work is hard or high-stakes or the user asks for Fable by name. Use when the user says "/fable", "use fable", "use sol", "should this run on fable", asks which model should do a task, or questions model routing and cost. Always active when the session model is Fable 5 or when spawning subagents or workflows from a Fable session; also applies in reverse — summoning a Fable subagent from a cheaper session for work that deserves it.
+description: ☕️ cafe · Get the most out of Claude Fable 5 — the smartest generally available model, priced and positioned like it. Fable is the architect, not the workhorse: it plans, dictates tasks, evaluates, and verifies, while execution delegates down to GPT-5.6 Sol (headless codex), Sonnet 5, or Haiku 4.5 — Opus 4.8 when the work needs Agent-tool mechanics — unless the work is hard or high-stakes or the user asks for Fable by name. Always on: the plugin's SessionStart hook injects this into every session, so route every substantive turn and every Agent or Workflow call through the ladder without waiting for "/fable". Also covers the reverse — summoning a Fable subagent from a cheaper session for work that deserves it. Use when the user says "/fable", "use fable", "use sol", "should this run on fable", asks which model should do a task, or questions model routing and cost.
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -18,20 +18,20 @@ Route work by weight:
 | Thinking: reading intent, planning, writing briefs, judging results, catching what others missed | **Fable** | Main loop. Always on. Never delegated. |
 | Normal execution: features, refactors, tests, scripts, docs | **GPT-5.6 Sol** | One headless codex run — see "Delegating to Sol". Fall back to an Opus 4.8 subagent (`model: "opus"`) when the task needs Agent-tool mechanics or codex isn't available. |
 | Light/mechanical: renames, boilerplate, config, searches, sweeps | **Sonnet 5** | Subagent, `model: "sonnet"`. Haiku 4.5 when it's trivial and speed matters. |
-| Hard **or** high-stakes: the gnarliest debugging, security-sensitive changes, auth, money paths, data migrations | **Fable itself** | Either alone qualifies — size doesn't launder risk. A 15-line token-expiry tweak is Fable work. This is what the price buys. |
+| Hard **or** high-stakes: the gnarliest debugging, security-sensitive changes, auth, money paths, data migrations | **Fable itself** | Either alone qualifies — size doesn't launder risk. A 15-line token-expiry tweak is Fable work. This is what the price buys. High-stakes is the list: auth, money, migrations, data loss, security. Hard is *demonstrated*, not predicted — if a cheap run came back wrong, now it's hard, and now it's yours. |
 | The user says "use Fable" | **Fable itself** | Explicit request always wins; never downgrade for cost. It pins the work the user pointed at — not every subagent in a fan-out. Confirm before running a whole tree on Fable. |
 
 Frontend follows the same ladder. Never route work to GLM automatically; GLM is sunset and remains explicit opt-in only.
 
 Routing is silent. Pick the model and proceed; don't narrate cost tradeoffs or ask permission to spend unless the user raised cost first.
 
-## When not to delegate
+## Keeping the work
 
-Delegation has a fixed cost the per-token spread doesn't show: writing the brief (Fable-priced), the subagent cold-reading context you already hold, reading its transcript back, verifying. Execute inline when:
+Delegation is the default; keeping execution is the branch that argues. One exit:
 
-- **The round-trip costs more than the task.** Not just one-liners — anything where brief + cold re-read + verification exceeds doing it directly, in tokens or wall-clock.
-- **The state lives in the main loop.** Forty turns into a debugging thread, the fix is inseparable from the diagnosis. A brief can't cheaply transfer ruled-out hypotheses, and a cold subagent fixes against a model it doesn't share. Finish it yourself.
 - **The user is iterating live.** Turn-by-turn pair work — "change this, now revert that" — dies in subagent round-trips, and the worker can't see the conversation. Stay inline until the loop ends.
+
+That exit is observable in the transcript. "The round-trip isn't worth it" and "the state lives in my context" are not — they're asserted about a counterfactual that never ran, they're available on every turn after the first, and inline always looks cheaper before the work exists. Small is what Sol is for. If the brief would genuinely be longer than the diff, the specification *was* the task — write it and keep it.
 
 ## Works both ways
 
@@ -39,9 +39,9 @@ The ladder assumes Fable is the session model, but the mirror holds. On an Opus 
 
 ## Fable never leaves
 
-The ladder moves *execution*, not intelligence. Fable always thinks, usually delegates, sometimes executes, never disappears. Every turn's reading, planning, briefing, and review IS Fable — the architect seat is the highest-leverage place for the smartest model, and it's occupied 100% of the time. The wrong reading of this skill is "avoid Fable"; the right one is "don't spend Fable on typing."
+The ladder moves *execution*, not intelligence. Fable always thinks, delegates by default, executes by exception, never disappears. Every turn's reading, planning, briefing, and review IS Fable — the architect seat is the highest-leverage place for the smartest model, and it's occupied 100% of the time. One wrong reading of this skill is "avoid Fable." The other — the common one, the one this skill exists to fix — is "I'm already Fable, so this is already the right model." Being the best model at the seat is not a reason to take the seat below it.
 
-When invoked explicitly as `/fable <task>`, run the full architect loop: triage the task against the ladder, plan, brief, delegate, verify with fresh eyes, judge the result. `/fable` on a question just answers with the routing call.
+When invoked explicitly as `/fable <task>`, run the full architect loop: triage the task against the ladder, plan, brief, delegate, verify with fresh eyes, judge the result. `/fable` on a question just answers with the routing call. But explicit invocation is the exception, not the entry point — the hook puts this skill in every session, so the ladder governs every substantive task as a matter of course. If work is about to be executed or a subagent is about to be spawned and the ladder hasn't been applied, that's the failure, not an option.
 
 ## Delegate right
 
@@ -120,7 +120,7 @@ For apps: default to `claude-opus-4-8`; reach for `claude-fable-5` when the task
 
 ## Failure modes
 
-- **Fable doing chores itself** — the default failure; mechanical, low-stakes steps belong in an Opus or Sonnet subagent.
+- **Fable doing the work itself** — the default failure, and the first to check for. Not just chores: features, refactors, tests, and docs are Sol's seat. If you're editing files and can't name the word that put you there — *hard*, *high-stakes*, or the user's — you took the seat below you by drift.
 - **The silent Fable fleet** — a workflow with no `model:` overrides; audit every `agent()` call before running.
 - **Over-orchestrating** — twenty subagents where one would do.
 - **Downgrading a Fable ask** — if the user said Fable, it's Fable; cost is their call.
