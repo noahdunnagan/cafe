@@ -1,64 +1,75 @@
 # cafe
 
-Skills and commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Skills and slash commands for AI coding agents, shipped as plain files over git —
+no account, no hosted service, no API key.
 
-## What's included
+The skills use the cross-vendor [`SKILL.md`](https://agents.md) format, so one copy
+works across **Claude Code, Codex, Cursor, Copilot, Gemini CLI, opencode, Zed,
+Windsurf, Cline, and Kilo**.
+
+## Skills
 
 | Plugin | Type | Description |
 |--------|------|-------------|
-| `blueprint` | Skill + Command | Three-mode planning — always-active disposition, `/blueprint` for generating requirements docs, and blueprint execution. |
+| `blueprint` | Skill + Command | Three-mode planning — always-active disposition, `/blueprint` for requirements docs, and blueprint execution. |
+| `rust-guide` | Skill | Opinionated Rust style guide — makes AI-written Rust look like a human wrote it. |
+| `distill` | Skill + Command | Rigorous refactoring. Every line earns its place; behavior preserved, complexity cut. |
+| `codex` | Skill | Delegate research, review, and adversarial sparring to OpenAI's Codex CLI. Auto-selects the best/cheapest model. |
+| `fable` | Skill | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. |
+| `tech-stack` | Skill | The canonical, opinionated stack for new projects — TanStack web, Rust backends, Railway-first. |
+| `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. |
+| `plainspeak` | Skill + Hook | Kills AI reply patterns — no filler openers, hedge stacks, recap closers, or jargon. |
+| `clog` | Skill | Search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. |
+| `todo` | Skill + Command | Turn "this needs doing" into a terse GitHub issue on any repo. |
+| `claude-review` | Commands | `/setup-review` installs a label-gated review Action; `/pr` runs the review loop; `/audit` audits a dir. |
 | `workflow` | Commands | `/push` for conventional commits, `/session` for session logging. |
-| `rust-guide` | Skill | Opinionated Rust style guide — makes AI-written Rust code look like a human wrote it. |
-| `codex` | Skill | Delegate research, code review, and adversarial sparring to OpenAI's Codex CLI. Auto-selects the best/cheapest available model — no version to maintain. |
-| `glm` | Skill | Delegate to GLM, a fast cheap model running headless in Claude Code that beats Opus at frontend. Frontend always goes to GLM; everything else can too. Fast/regular serving lanes. Needs the `glm` shell function. |
-| `distill` | Skill + Command | Rigorous code refactoring. Every line earns its place. Preserves functionality, cuts complexity. |
-| `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. Prevents duplicates, manages branches. |
-| `claude-review` | Commands | `/setup-review` installs the Claude Code Review GitHub Action into a repo (label-gated, non-intrusive). `/pr` runs the review loop. |
-| `clog` | Skill | Teaches Claude to search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. Auto-invokes for past-session lookups. |
-| `tech-stack` | Skill | The canonical, opinionated tech stack for new projects — TanStack web, Rust backends, Railway-first, self-hosted data. Always active when choosing technology. |
-| `fable` | Skill | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Delegation ladder, workflow model-override gotchas, effort tuning, API reference. |
+| `glm` | Skill | Legacy explicit-only delegation for the sunset GLM model. |
 
-## Install
+## Install — the `cafe` CLI (any agent)
 
-Add the marketplace and install what you want:
+The `cafe` CLI detects every agent on your machine and links the skills in. Browse
+them with descriptions, pick a subset, update, or uninstall — all interactive.
+
+```sh
+git clone https://github.com/noahdunnagan/cafe && cd cafe
+cargo install --path cli
+cafe                # interactive menu
+```
+
+| Command | Does |
+|---------|------|
+| `cafe install` | Browse skills, pick agents, link them in |
+| `cafe list` | Every skill with its description |
+| `cafe update` | `git pull` — refreshes every linked agent at once |
+| `cafe uninstall` | Remove cafe's links (leaves your own files untouched) |
+
+Skills install as symlinks back into the checkout, so a single `cafe update`
+reaches every agent. Requires [Rust](https://rustup.rs); Unix-only (macOS/Linux).
+
+## Install — Claude Code plugins
+
+Claude Code can install directly from the plugin marketplace, which also wires up
+hooks like plainspeak's always-on SessionStart:
 
 ```
 /plugin marketplace add noahdunnagan/cafe
-/plugin install blueprint@cafe
-/plugin install workflow@cafe
-/plugin install rust-guide@cafe
-/plugin install codex@cafe
-/plugin install glm@cafe
-/plugin install distill@cafe
-/plugin install parallel@cafe
-/plugin install claude-review@cafe
-/plugin install clog@cafe
-/plugin install tech-stack@cafe
-/plugin install fable@cafe
+/plugin install blueprint@cafe      # …or any plugin from the table above
 ```
 
-The `clog` plugin assumes the `clog` binary is on your `$PATH`. See [noahdunnagan/clog](https://github.com/noahdunnagan/clog) for install.
+## Conductor
 
-## Use with other AI agents (Codex, Cursor, Copilot, Gemini, Zed, …)
+[Conductor](https://conductor.build) runs **Claude Code and Codex** — it has no
+skills store of its own, so it surfaces whatever those agents load. Installing
+into Claude Code / Codex (either method above) is all it takes; cafe's skills
+appear in Conductor's `/` menu automatically. Pick *one* install method, though —
+using the CLI and the plugin marketplace together shows every command twice.
 
-The skills use the cross-vendor [`SKILL.md`](https://agents.md) format, so they work
-in far more than Claude Code. `install.sh` symlinks every skill and command into
-each AI coding agent it finds on your machine — **no signup, no dependencies, no network**:
+## Other agents
 
-```
-git clone https://github.com/noahdunnagan/cafe && cd cafe
-./install.sh            # detects your agents and links everything in
-./install.sh --dry-run  # preview first
-./install.sh --project .   # per-repo install (needed for Cursor — it has no global skills dir)
-```
-
-| Tier | Agents | What they get |
-|------|--------|---------------|
-| **Full** (skills + commands) | Claude Code, Codex CLI, Cursor, GitHub Copilot, Gemini CLI, opencode, Zed, Windsurf, Cline, Kilo | native `SKILL.md` — zero conversion |
-| **Instructions** | Aider, + any [AGENTS.md](https://agents.md)-aware tool | `AGENTS.md` as always-on context |
-
-Symlinks point back into the clone, so `git pull` updates every agent at once. Use
-`--copy` if your filesystem can't symlink (Windows). See [`AGENTS.md`](AGENTS.md) for details.
+Agents without `SKILL.md` support (e.g. Aider) read [`AGENTS.md`](AGENTS.md)
+directly — add it to their instruction file for the same guidance as always-on
+context. The `clog` plugin needs the [`clog`](https://github.com/noahdunnagan/clog)
+binary on your `$PATH`.
 
 ## License
 

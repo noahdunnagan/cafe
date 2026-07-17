@@ -11,13 +11,11 @@ Gemini CLI, opencode, Zed, Windsurf, Cline, Kilo, Amp and others read natively.
 
 ```sh
 git clone <this repo> && cd cafe
-./install.sh            # symlinks every skill + command into each agent on this machine
-./install.sh --dry-run  # preview without touching anything
-./install.sh --project .   # install into a single repo's per-project agent dirs (e.g. Cursor)
+cargo install --path cli   # then run `cafe` to browse and link skills into every agent
 ```
 
-Symlinks point back into this checkout, so `git -C <cafe> pull` updates every agent
-at once. Use `--copy` where symlinks aren't available (Windows).
+Skills install as symlinks back into this checkout, so `cafe update` (or
+`git -C <cafe> pull`) refreshes every agent at once. Requires Rust; Unix-only.
 
 ## Skills (auto-invoke by description; also runnable as `/name`)
 
@@ -27,10 +25,11 @@ at once. Use `--copy` where symlinks aren't available (Windows).
 - **codex** — delegate research / review / sparring to the Codex CLI (auto-selects the best/cheapest Codex model).
 - **parallel** — launch and track parallel work in isolated git worktrees.
 - **clog** — search your Claude Code chat history via the `clog` CLI.
+- **todo** — file a terse GitHub issue for a task on any repo; title carries the todo, body only when the title can't.
 
 ## Commands
 
-`/push` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/pr` · `/setup-review` · `/audit` · `/audit-all` · `/migrate-to-agents-md`
+`/push` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/pr` · `/setup-review` · `/audit` · `/audit-all` · `/migrate-to-agents-md` · `/todo`
 
 > Agents without `SKILL.md` support (e.g. Aider) read this file directly — add it to
 > Aider's `read:` list to get the skill guidance as always-on context.

@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: Three-mode planning system — always-active disposition, explicit blueprint generation (/blueprint), and blueprint execution. Scales rigor to task size.
+description: ☕️ cafe · Three-mode planning system — always-active disposition, explicit blueprint generation (/blueprint), and blueprint execution. Scales rigor to task size.
 user-invocable: true
 disable-model-invocation: false
 ---

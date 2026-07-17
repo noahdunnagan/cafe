@@ -1,6 +1,6 @@
 ---
 name: distill
-description: Rigorous code refactoring — every line earns its place. Preserves functionality, removes everything that doesn't justify its existence. Use when user says "/distill", "clean this up", "tighten this", "distill", or wants code quality improved without changing behavior.
+description: ☕️ cafe · Rigorous code refactoring — every line earns its place. Preserves functionality, removes everything that doesn't justify its existence. Use when user says "/distill", "clean this up", "tighten this", "distill", or wants code quality improved without changing behavior.
 user-invocable: true
 disable-model-invocation: false
 ---
