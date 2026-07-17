@@ -15,8 +15,9 @@ Windsurf, Cline, and Kilo**.
 | `rust-guide` | Skill | Opinionated Rust style guide — makes AI-written Rust look like a human wrote it. |
 | `distill` | Skill + Command | Rigorous refactoring. Every line earns its place; behavior preserved, complexity cut. |
 | `codex` | Skill | Delegate research, review, and adversarial sparring to OpenAI's Codex CLI. Auto-selects the best/cheapest model. |
-| `fable` | Skill | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. |
+| `fable` | Skill + Hook | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Always-on routing via SessionStart. |
 | `tech-stack` | Skill | The canonical, opinionated stack for new projects — TanStack web, Rust backends, Railway-first. |
+| `architecture` | Skill | How systems get laid out — one app by default, named triggers for adding anything. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. |
 | `plainspeak` | Skill + Hook | Kills AI reply patterns — no filler openers, hedge stacks, recap closers, or jargon. |
 | `clog` | Skill | Search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. |

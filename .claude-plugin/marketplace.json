@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.12.0"
+    "version": "1.13.0"
   },
   "plugins": [
     {
@@ -99,10 +99,19 @@
       }
     },
     {
+      "name": "architecture",
+      "source": "./plugins/architecture",
+      "description": "How systems get laid out. One app by default, siloed apps/* when there are real deployables, named triggers for adding anything. The architect's judgment, encoded, so the person building never has to make a structure decision.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
+    },
+    {
       "name": "fable",
       "source": "./plugins/fable",
-      "description": "Get the most out of Claude Fable 5 \u2014 Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to GPT-5.6 Sol via headless codex (Opus 4.8 when Agent-tool mechanics are needed), light work to Sonnet 5. Fable executes only what's hard or high-stakes, or what the user asks it to.",
-      "version": "1.1.0",
+      "description": "Get the most out of Claude Fable 5 \u2014 Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to GPT-5.6 Sol via headless codex (Opus 4.8 when Agent-tool mechanics are needed), light work to Sonnet 5. Fable executes only what's hard or high-stakes, or what the user asks it to. Always on via a SessionStart hook.",
+      "version": "1.2.0",
       "author": {
         "name": "Noah Dunnagan"
       }

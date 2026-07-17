@@ -26,6 +26,8 @@ Skills install as symlinks back into this checkout, so `cafe update` (or
 - **parallel** — launch and track parallel work in isolated git worktrees.
 - **clog** — search your Claude Code chat history via the `clog` CLI.
 - **todo** — file a terse GitHub issue for a task on any repo; title carries the todo, body only when the title can't.
+- **architecture** — where files go, when one app becomes two, and when to refuse a database or service.
+- **fable** — model routing: Fable architects, Sol/Opus/Sonnet execute. On Claude Code a SessionStart hook makes it always-on; elsewhere it auto-invokes by description.
 
 ## Commands
 
