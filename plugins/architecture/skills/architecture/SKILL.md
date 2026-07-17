@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: How to structure any system. Where files go, when a repo becomes a monorepo, when one app becomes two, and when to add (or refuse) a database, service, or queue. Use whenever laying out a new project, creating files in an unfamiliar repo, restructuring, or when structure questions come up. "where should this go", "should this be its own service", "do we need a microservice", "how should I organize this", "set up a monorepo", "split this out". Always active when creating projects, adding services, or placing new code.
+description: ☕️ cafe · How to structure any system. Where files go, when a repo becomes a monorepo, when one app becomes two, and when to add (or refuse) a database, service, or queue. Use whenever laying out a new project, creating files in an unfamiliar repo, restructuring, or when structure questions come up. "where should this go", "should this be its own service", "do we need a microservice", "how should I organize this", "set up a monorepo", "split this out". Always active when creating projects, adding services, or placing new code.
 user-invocable: true
 disable-model-invocation: false
 ---
