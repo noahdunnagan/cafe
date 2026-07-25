@@ -10,12 +10,13 @@ Gemini CLI, opencode, Zed, Windsurf, Cline, Kilo, Amp and others read natively.
 ## Install into your agents
 
 ```sh
-git clone <this repo> && cd cafe
-cargo install --path cli   # then run `cafe` to browse and link skills into every agent
+curl -fsSL https://raw.githubusercontent.com/noahdunnagan/cafe/main/install.sh | sh
+cafe   # browse and link skills into every agent
 ```
 
-Skills install as symlinks back into this checkout, so `cafe update` (or
-`git -C <cafe> pull`) refreshes every agent at once. Requires Rust; Unix-only.
+Installs Rust if it's missing, clones cafe, and builds the CLI. Skills install as
+symlinks back into the checkout, so `cafe update` (or `git -C <cafe> pull`)
+refreshes every agent at once. Unix-only (macOS/Linux).
 
 ## Skills (auto-invoke by description; also runnable as `/name`)
 

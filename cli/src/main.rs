@@ -84,21 +84,44 @@ fn run() -> io::Result<()> {
 // ---------------------------------------------------------------- flows
 
 fn menu() -> io::Result<()> {
-    let action: String = select("cafe · what would you like to do?")
-        .item("install".into(), "Install skills into your AI agents", "browse & pick")
-        .item("list".into(), "List available skills", "")
-        .item("update".into(), "Update everything", "git pull")
-        .item("clean".into(), "Remove dead links from removed skills", "")
-        .item("uninstall".into(), "Remove cafe's links", "")
-        .item("quit".into(), "Quit", "")
-        .interact()?;
-    match action.as_str() {
-        "install" => install(),
-        "list" => list(),
-        "update" => update(),
-        "clean" => clean(),
-        "uninstall" => uninstall(),
-        _ => Ok(()),
+    // A missing checkout can't install/list/update; offer only what works, and say why once.
+    let has_checkout = cafe_root().is_ok();
+    if !has_checkout {
+        log::warning(
+            "cafe checkout not found — hiding install/list/update. Run inside the clone or set \
+             CAFE_HOME to restore them; clean/uninstall still work without it.",
+        )?;
+    }
+    let mut selected = if has_checkout { "install" } else { "clean" }.to_string();
+    loop {
+        let mut sel = select("cafe · what would you like to do?").initial_value(selected.clone());
+        if has_checkout {
+            sel = sel
+                .item("install".into(), "Install skills into your AI agents", "browse & pick")
+                .item("list".into(), "List available skills", "")
+                .item("update".into(), "Update everything", "git pull");
+        }
+        selected = sel
+            .item("clean".into(), "Remove dead links from removed skills", "")
+            .item("uninstall".into(), "Remove cafe's links", "")
+            .item("quit".into(), "Quit", "")
+            .interact()?;
+        let outcome = match selected.as_str() {
+            "install" => install(),
+            "list" => list(),
+            "update" => update(),
+            "clean" => clean(),
+            "uninstall" => uninstall(),
+            _ => return Ok(()),
+        };
+        // Cancelling or erroring inside an action drops back to the menu, not out of the app.
+        match outcome {
+            Ok(()) => {}
+            Err(e) if e.kind() == ErrorKind::Interrupted => {
+                outro_cancel("Cancelled — nothing changed.")?
+            }
+            Err(e) => log::error(e.to_string())?,
+        }
     }
 }
 

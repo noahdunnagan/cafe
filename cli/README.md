@@ -7,6 +7,13 @@ uninstall cleanly.
 ## Install
 
 ```
+curl -fsSL https://raw.githubusercontent.com/noahdunnagan/cafe/main/install.sh | sh
+```
+
+Installs Rust if it's missing, clones cafe, and builds the CLI. Already have a
+checkout and Rust? Just:
+
+```
 cargo install --path cli      # from the cafe checkout
 ```
 
