@@ -32,10 +32,13 @@ The `cafe` CLI detects every agent on your machine and links the skills in. Brow
 them with descriptions, pick a subset, update, or uninstall — all interactive.
 
 ```sh
-git clone https://github.com/noahdunnagan/cafe && cd cafe
-cargo install --path cli
+curl -fsSL https://raw.githubusercontent.com/noahdunnagan/cafe/main/install.sh | sh
 cafe                # interactive menu
 ```
+
+The installer clones cafe to `~/.cafe` (override with `CAFE_HOME`), installs Rust
+via [rustup](https://rustup.rs) if it's missing, then builds the CLI. Already have a
+checkout? Run `./install.sh` inside it and it builds that one instead.
 
 | Command | Does |
 |---------|------|
@@ -45,7 +48,7 @@ cafe                # interactive menu
 | `cafe uninstall` | Remove cafe's links (leaves your own files untouched) |
 
 Skills install as symlinks back into the checkout, so a single `cafe update`
-reaches every agent. Requires [Rust](https://rustup.rs); Unix-only (macOS/Linux).
+reaches every agent. Unix-only (macOS/Linux).
 
 ## Install — Claude Code plugins
 
