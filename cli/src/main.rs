@@ -440,6 +440,14 @@ fn cafe_root() -> io::Result<PathBuf> {
             }
         }
     }
+    // Where install.sh clones. A prebuilt binary has no build-time repo path, so this
+    // is the only thing standing between a downloaded `cafe` and "checkout not found".
+    if let Some(home) = env::var_os("HOME") {
+        let dot = Path::new(&home).join(".cafe");
+        if is_cafe_checkout(&dot) {
+            return Ok(canonical(dot));
+        }
+    }
     if let Some(built) = Path::new(env!("CARGO_MANIFEST_DIR")).parent() {
         if is_cafe_checkout(built) {
             return Ok(canonical(built.to_path_buf()));
