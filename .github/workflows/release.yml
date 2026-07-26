@@ -1,0 +1,42 @@
+name: release
+
+# Tag a version (`git tag v0.1.0 && git push --tags`) and this publishes prebuilt
+# `cafe` binaries so install.sh doesn't have to make people install Rust.
+# Run it manually first (workflow_dispatch) to check the cross-compiles before tagging —
+# it builds everything and uploads nothing unless the ref is a tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: macos-latest,     target: aarch64-apple-darwin }
+          - { os: macos-latest,     target: x86_64-apple-darwin }
+          - { os: ubuntu-latest,    target: x86_64-unknown-linux-musl }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # musl over glibc: one static binary that runs on any distro, no version dance.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release --locked --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
+      - run: tar czf cafe-${{ matrix.target }}.tar.gz -C cli/target/${{ matrix.target }}/release cafe
+      # gh is preinstalled on runners, so there's no third-party action to trust with
+      # release-write. `create ||:` loses the race with the other three matrix jobs
+      # harmlessly — if it failed for a real reason, the upload below says so loudly.
+      - if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --generate-notes ||:
+          gh release upload "$TAG" cafe-${{ matrix.target }}.tar.gz --clobber

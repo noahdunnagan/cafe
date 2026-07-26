@@ -36,9 +36,11 @@ curl -fsSL https://raw.githubusercontent.com/noahdunnagan/cafe/main/install.sh |
 cafe                # interactive menu
 ```
 
-The installer clones cafe to `~/.cafe` (override with `CAFE_HOME`), installs Rust
-via [rustup](https://rustup.rs) if it's missing, then builds the CLI. Already have a
-checkout? Run `./install.sh` inside it and it builds that one instead.
+The installer clones cafe to `~/.cafe` (override with `CAFE_HOME`) and drops a prebuilt
+`cafe` binary in `~/.local/bin` (override with `CAFE_BIN`) — no Rust required. On a
+platform with no prebuilt binary it installs Rust via [rustup](https://rustup.rs) and
+builds from source. Run `./install.sh` inside a checkout you already have and it builds
+that tree instead — contributors get their own code, not the last release.
 
 | Command | Does |
 |---------|------|
