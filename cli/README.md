@@ -10,15 +10,17 @@ uninstall cleanly.
 curl -fsSL https://raw.githubusercontent.com/noahdunnagan/cafe/main/install.sh | sh
 ```
 
-Installs Rust if it's missing, clones cafe, and builds the CLI. Already have a
-checkout and Rust? Just:
+Clones cafe to `~/.cafe` and downloads a prebuilt binary to `~/.local/bin` — no Rust
+needed. Platforms without a prebuilt binary fall back to installing Rust and building
+from source, as does running `./install.sh` inside a checkout that already has cargo.
+Already have a checkout and Rust? Equivalently:
 
 ```
 cargo install --path cli      # from the cafe checkout
 ```
 
-The binary remembers the checkout it was built from, so `cafe` works from
-anywhere. Moved the clone? Set `CAFE_HOME=/path/to/cafe`.
+`cafe` finds its checkout from `~/.cafe`, the cwd, or wherever it was built, so it
+works from anywhere. Clone somewhere else? Set `CAFE_HOME=/path/to/cafe`.
 
 ## Use
 
