@@ -1,0 +1,8 @@
+{
+  "name": "noahspeak",
+  "description": "Register-matching layer on top of plainspeak. Talks back to Noah the way Noah talks — short, lowercase-casual, verdict-first, chained with \"so\" and \"also\", \"ty\" not \"you're welcome\". Derived from ~3,200 real prompts. Always on via a SessionStart hook that injects it into every session.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
