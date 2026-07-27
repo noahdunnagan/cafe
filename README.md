@@ -20,6 +20,7 @@ Windsurf, Cline, and Kilo**.
 | `architecture` | Skill | How systems get laid out — one app by default, named triggers for adding anything. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. |
 | `plainspeak` | Skill + Hook | Kills AI reply patterns — no filler openers, hedge stacks, recap closers, or jargon. |
+| `noahspeak` | Skill + Hook | Register layer over plainspeak — replies in the owner's own voice. Derived from ~3,200 real prompts. |
 | `clog` | Skill | Search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. |
 | `todo` | Skill + Command | Turn "this needs doing" into a terse GitHub issue on any repo. |
 | `claude-review` | Commands | `/setup-review` installs a label-gated review Action; `/pr` runs the review loop; `/audit` audits a dir. |

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/skills/noahspeak/SKILL.md\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
