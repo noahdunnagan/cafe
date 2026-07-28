@@ -1,14 +1,16 @@
 ---
 name: pr-review-loop
 command: pr
-description: ☕️ cafe · Run the full PR review loop. If no PR exists for the current branch, opens one first. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. Usage: /pr <number> or /pr (auto-detects current branch, opens PR if needed). Requires the workflow from /setup-review to be installed.
+description: ☕️ cafe · Run the full PR review loop. If no PR exists for the current branch, opens one first. Adds the `review` label, polls for the code review check, reads comments, fixes or replies, resolves threads, pushes, repeats until clean. If the repo has no Claude review workflow installed, it still opens the PR and stops there. Usage: /pr <number> or /pr (auto-detects current branch, opens PR if needed).
 ---
 
-You are running the PR review loop for this repository. This is a fully automated cycle.
+You are opening and reviewing a pull request for this repository. Open the PR if one doesn't exist, then run the automated review loop — but only if the repo actually has the review workflow installed.
 
 ## Prerequisites
 
-This command assumes the code-review workflow is installed in the repo and the `CLAUDE_CODE_OAUTH_TOKEN` secret is set. If the workflow is missing, run `/setup-review` first.
+`gh`, authed. Nothing else is required.
+
+The Claude review workflow (from `/setup-review`) is **optional**. If it is installed, this command runs the full review loop. If it is not, this command opens the PR and stops — it does not nag, and it does not refuse to work.
 
 ## Setup
 
@@ -24,25 +26,34 @@ Parse the input:
 3. If the branch has no upstream, push it: `git push -u origin <branch>`.
 4. Build the PR title and body:
    - **Title** — use the latest commit's subject if it's conventional and descriptive; otherwise summarize the diff in one short line.
-   - **Body** — a Summary section (what changed and why, bullet form) and a Test plan section (checklist). Read `git log <default>..HEAD` and `git diff <default>...HEAD` to write this — cover all commits, not just the most recent.
+   - **Body** — short. Read `git log <default>..HEAD` and `git diff <default>...HEAD` in full, then compress; never transcribe. Default shape:
+     - One or two sentences: what changed and why.
+     - Bullets only if the diff spans genuinely distinct areas — one line each, five max.
+     - A test plan only when a reviewer must actually run something. Skip the ceremonial checklist.
+     - No file-by-file inventory, no restating the diff, no section headings on a three-line body.
+     - Aim under 120 words. A reviewer should know what they're looking at in ten seconds.
    - **No AI-attribution footer** — no `🤖 Generated with [Claude Code]`, no `Co-Authored-By: Claude` (the global hook will block these anyway).
 5. `gh pr create --title "..." --body "..."` (use a HEREDOC for the body so multi-line content survives).
 6. Capture the new PR number and proceed.
 
-Then ensure the PR is marked ready (not draft). Add the `review` label if not already present. Adding the label is what triggers the workflow.
+### Detect the review workflow
+
+Before touching labels, find out whether the repo has the Claude review workflow:
+
+`grep -l 'anthropics/claude-code-action' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null`
+
+- **No match** — the repo has no Claude GitHub integration. Report the PR URL, mention in one line that `/setup-review` can install the review workflow if they want it, and **stop**. Do not add the `review` label, do not poll checks, do not treat this as an error.
+- **Match** — continue. If multiple match, prefer one triggered by `pull_request: types: [labeled]`. Read the matched file; the check name is the job key (the YAML key under `jobs:`). Common values: `code-review`, `claude-review`. Capture it as `$CHECK`.
+
+On a match, ensure the PR is marked ready (not draft), then fire a label event: the workflow triggers on `labeled`, so a `review` label that is *already* present triggers nothing. If the label is missing, add it (`gh pr edit <num> --add-label review`); if it's already there, remove and re-add it. If the repo has no `review` label at all, create it first (`gh label create review`).
 
 ## The Loop
 
 Repeat this cycle until the review passes clean:
 
-### 1. Identify and wait for the review check
+### 1. Wait for the review check
 
-Detect the check name from the workflow file rather than hardcoding it:
-
-1. Find the review workflow: `grep -l 'anthropics/claude-code-action' .github/workflows/*.yml 2>/dev/null`. If multiple match, prefer one triggered by `pull_request: types: [labeled]`. If none match, stop and tell the user to run `/setup-review`.
-2. Read the matched file. The check name is the job key (the YAML key under `jobs:`). Common values: `code-review`, `claude-review`. Capture it as `$CHECK`.
-
-Then poll `gh pr checks <number>` every 10 seconds. Watch for `$CHECK`.
+Poll `gh pr checks <number>` every 10 seconds. Watch for `$CHECK` (captured during detection).
 - If `$CHECK` passes: still fetch comments — a pass with comments needs attention.
 - If `$CHECK` fails: check logs with `gh run view` to determine review failure (has comments) vs infra failure (bad credentials, timeout). If infra failure, report and stop.
 - If `$CHECK` is "skipping": a second run was queued while the first was running. Wait for the non-skipping run.
