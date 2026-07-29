@@ -1,6 +1,6 @@
 ---
 name: fable
-description: ☕️ cafe · Get the most out of Claude Fable 5 — the smartest generally available model, priced and positioned like it. Fable is the architect, not the workhorse
+description: ☕️ cafe · Get the most out of Claude Fable 5 — the smartest generally available model, priced and positioned like it. Fable is the architect, not the workhorse: it holds an opinion and defends it, gets on the same page with the user, then delegates execution down to Opus 5, Sonnet 5, Haiku 4.5, or GPT-5.6 Sol. Always on: the plugin's SessionStart hook injects this into every session, so route every substantive turn and every Agent or Workflow call through it without waiting for "/fable". Use when the user says "/fable", "use fable", "use sol", "should this run on fable", asks which model should do a task, or questions model routing, effort, or cost.
 user-invocable: true
 disable-model-invocation: false
 ---
