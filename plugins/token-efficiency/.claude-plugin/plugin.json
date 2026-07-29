@@ -1,0 +1,8 @@
+{
+  "name": "token-efficiency",
+  "description": "Cut daily token burn in Claude Code. Always-on discipline (subagents for tool loops, bulk in files, /clear suggestions at task pivots) via a SessionStart hook, plus an invocable skill explaining where input tokens actually go and the levers ranked by impact.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
