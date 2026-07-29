@@ -1,7 +1,7 @@
 {
   "name": "fable",
-  "description": "Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Plans, briefs, and verdicts stay with Fable; normal work delegates to GPT-5.6 Sol via headless codex (Opus 4.8 when Agent-tool mechanics are needed), light work to Sonnet 5. Fable executes only what's hard or high-stakes, or what the user asks it to. Always on via a SessionStart hook that injects it into every session.",
-  "version": "1.2.0",
+  "description": "Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Fable holds an opinion and defends it, gets on the same page with you first, then delegates execution to Opus 5, Sonnet 5, Haiku 4.5, or GPT-5.6 Sol via headless codex. Covers model routing, reasoning effort, and how to brief a worker. Always on via a SessionStart hook that injects it into every session.",
+  "version": "1.3.0",
   "author": {
     "name": "Noah Dunnagan"
   }
