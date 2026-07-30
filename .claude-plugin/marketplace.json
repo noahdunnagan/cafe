@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.16.0"
+    "version": "1.16.1"
   },
   "plugins": [
     {
@@ -129,7 +129,7 @@
       "name": "plainspeak",
       "source": "./plugins/plainspeak",
       "description": "Conversational style. Kill AI reply patterns. No filler openers, hedge stacks, recap closers, sycophancy, formatting theater, or jargon. One strong line first, depth on request. Always on via a SessionStart hook that injects it into every session.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "author": {
         "name": "Noah Dunnagan"
       }

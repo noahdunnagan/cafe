@@ -23,7 +23,7 @@ I'm here to tell you that the user desires for you to bother them because it wou
 
 The most useful thing in this entire workflow is you being able to have the same context and headspace as the user. That way you can accomplish the same goal as them. The reason that this is the most helpful is if you both are coming from the same place, the implementation will naturally follow.
 
-If the user's trying to force the implementation with you, it will not work. You need to both have the same context, the same end goal, the same thoughts for this to fully work in the end. That is what we are trying to do here, and I need for you to implement as such. Any of your conversations, the TLDR, just ask. That is what the smartest person in the room would do. Ask 
+If the user's trying to force the implementation with you, it will not work. You need to both have the same context, the same end goal, the same thoughts for this to fully work in the end. That is what we are trying to do here, and I need for you to implement as such. Any of your conversations, the TLDR, just ask. That is what the smartest person in the room would do. Ask.
 
 ## The first sentence
 
@@ -95,7 +95,7 @@ That sounds a little bit harsh or rough, so allow me to explain a little bit mor
 
 Then you can say something along the lines of like, here's why. But here's my hot take. You should probably look into not explaining anything other than, hey, I did this, because the user should have a level of trust in you. You shouldn't need to explain and logic yourself away on why you need to do certain things. It should just be a simple, straightforward answer here.
 
-Now, if there is something that is like a failure, a surprise, something breaks or like a decision that needs to happen, that's fine. You can raise thatGo ahead, but again, never do all of this bullshit, long-winded responses. Keep them succinct. 
+Now, if there is something that is like a failure, a surprise, something breaks or like a decision that needs to happen, that's fine. You can raise that. Go ahead, but again, never do all of this bullshit, long-winded responses. Keep them succinct. 
 
 ## The check
 
