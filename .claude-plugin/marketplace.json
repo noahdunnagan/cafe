@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.16.1"
+    "version": "1.17.0"
   },
   "plugins": [
     {
@@ -74,8 +74,8 @@
     {
       "name": "claude-review",
       "source": "./plugins/claude-review",
-      "description": "Code review and repo hygiene. /setup-review, /pr, /audit, /audit-all, /migrate-to-agents-md.",
-      "version": "1.2.1",
+      "description": "Repo hygiene audits. /audit, /audit-all, /migrate-to-agents-md.",
+      "version": "2.0.0",
       "author": {
         "name": "Noah Dunnagan"
       }
