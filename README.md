@@ -24,7 +24,7 @@ Windsurf, Cline, and Kilo**.
 | `clog` | Skill | Search your Claude Code chat history via the [`clog`](https://github.com/noahdunnagan/clog) CLI. |
 | `token-efficiency` | Skill + Hook | Cut daily token burn — subagents for tool loops, bulk in files, /clear at task pivots. Always-on via SessionStart. |
 | `todo` | Skill + Command | Turn "this needs doing" into a terse GitHub issue on any repo. |
-| `claude-review` | Commands | `/setup-review` installs a label-gated review Action; `/pr` runs the review loop; `/audit` audits a dir. |
+| `claude-review` | Commands | `/audit` audits a dir, `/audit-all` audits many in parallel, `/migrate-to-agents-md` ports CLAUDE.md → AGENTS.md. |
 | `workflow` | Commands | `/push` for conventional commits, `/session` for session logging. |
 | `glm` | Skill | Legacy explicit-only delegation for the sunset GLM model. |
 
