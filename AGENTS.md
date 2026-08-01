@@ -32,7 +32,7 @@ refreshes every agent at once. Unix-only (macOS/Linux).
 
 ## Commands
 
-`/push` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/audit` · `/audit-all` · `/migrate-to-agents-md` · `/todo`
+`/push` · `/pr` · `/session` · `/blueprint` · `/distill` · `/parallel` · `/audit` · `/audit-all` · `/migrate-to-agents-md` · `/todo`
 
 > Agents without `SKILL.md` support (e.g. Aider) read this file directly — add it to
 > Aider's `read:` list to get the skill guidance as always-on context.
