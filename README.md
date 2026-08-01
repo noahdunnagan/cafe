@@ -25,7 +25,7 @@ Windsurf, Cline, and Kilo**.
 | `token-efficiency` | Skill + Hook | Cut daily token burn — subagents for tool loops, bulk in files, /clear at task pivots. Always-on via SessionStart. |
 | `todo` | Skill + Command | Turn "this needs doing" into a terse GitHub issue on any repo. |
 | `claude-review` | Commands | `/audit` audits a dir, `/audit-all` audits many in parallel, `/migrate-to-agents-md` ports CLAUDE.md → AGENTS.md. |
-| `workflow` | Commands | `/push` for conventional commits, `/session` for session logging. |
+| `workflow` | Commands | `/push` for conventional commits, `/pr` to open a pull request, `/session` for session logging. |
 | `glm` | Skill | Legacy explicit-only delegation for the sunset GLM model. |
 
 ## Install — the `cafe` CLI (any agent)
