@@ -9,6 +9,7 @@
 // SessionStart) still need `/plugin install …@cafe`; noted, not reimplemented.
 // Unix-only symlinks (mac/Linux).
 
+use std::ffi::{OsStr, OsString};
 use std::io::{self, ErrorKind};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
@@ -285,9 +286,10 @@ fn update() -> io::Result<()> {
         }
     };
     if out.status.success() {
-        sp.stop("Updated. Every linked agent now sees the latest skills.");
+        sp.stop("Pulled.");
         log::info(String::from_utf8_lossy(&out.stdout).trim())?;
-        outro("Done.")?;
+        relink(&c)?;
+        outro("Done. Every linked agent now sees the latest skills.")?;
         Ok(())
     } else {
         sp.error("git pull failed");
@@ -298,6 +300,63 @@ fn update() -> io::Result<()> {
         )?;
         Err(io::Error::other("git pull failed"))
     }
+}
+
+/// Re-link every plugin the agent already has, then sweep what's still dead.
+/// A pull can add a command to a plugin you have, or move one between plugins —
+/// the old link then points at a deleted file, and agents skip dangling links in
+/// silence. Symlinks alone only cover edits to files that kept their path.
+fn relink(c: &Ctx) -> io::Result<()> {
+    let plugins = plugins(&c.root);
+    let sp = spinner();
+    sp.start("Relinking…");
+    let mut linked = 0usize;
+    for a in agents(&c.home) {
+        let dirs: Vec<PathBuf> = [a.skills.clone(), a.commands.clone()].into_iter().flatten().collect();
+        let have = installed_plugins(&dirs, &c.root);
+        // A permission error on one agent shouldn't sink the whole update.
+        for p in plugins.iter().filter(|p| have.contains(&file_name(&p.dir))) {
+            if let Ok((n, _)) = install_plugin(p, &a, &c.root) {
+                linked += n;
+            }
+        }
+    }
+    // Whatever still dangles belongs to a skill that's gone for good.
+    let dead = collect_cafe_links(&agent_dirs(&c.home), Some(&c.root), false);
+    for p in &dead {
+        let _ = fs::remove_file(p);
+    }
+    sp.stop(format!("Relinked {linked} item(s), removed {} dead link(s).", dead.len()));
+    Ok(())
+}
+
+/// Which plugins an agent has installed, read back off its own link targets
+/// (…/plugins/<name>/skills|commands/<leaf>) — so update needs no state file and
+/// still respects whatever subset was picked at install time.
+fn installed_plugins(dirs: &[PathBuf], root: &Path) -> Vec<OsString> {
+    let mut out: Vec<OsString> = Vec::new();
+    for dir in dirs {
+        for p in read_all(dir) {
+            if !is_cafe_owned(&p, root) {
+                continue;
+            }
+            let Ok(target) = fs::read_link(&p) else { continue };
+            // Resolve live links (the raw target may run through a symlinked path);
+            // a dangling one can't resolve, so take it at face value.
+            let target = fs::canonicalize(&p).unwrap_or(target);
+            let Ok(rel) = target.strip_prefix(root) else { continue };
+            let mut parts = rel.components().map(|c| c.as_os_str());
+            if parts.next() != Some(OsStr::new("plugins")) {
+                continue;
+            }
+            if let Some(name) = parts.next().map(ToOwned::to_owned) {
+                if !out.contains(&name) {
+                    out.push(name);
+                }
+            }
+        }
+    }
+    out
 }
 
 fn uninstall() -> io::Result<()> {
@@ -366,7 +425,7 @@ USAGE
   cafe                interactive menu
   cafe install        browse skills and install into your agents
   cafe list           list available skills with descriptions
-  cafe update         git pull — refreshes every linked agent at once
+  cafe update         git pull, then relink every agent (picks up moved skills)
   cafe clean          remove dead links left by removed/renamed skills
   cafe uninstall      remove cafe's links
   cafe --help         this help
@@ -715,6 +774,39 @@ mod tests {
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    // The /pr case: a command moves from plugin `a` to plugin `b` upstream. The old
+    // link dangles; relinking what the agent already has must repoint it.
+    #[test]
+    fn installed_plugins_reads_back_owners_including_dangling_links() {
+        let base = scratch("owners");
+        let root = base.join("cafe");
+        let live = root.join("plugins/b/commands/push.md");
+        fs::create_dir_all(live.parent().unwrap()).unwrap();
+        fs::write(&live, "# push").unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let cmds = base.join("out/commands");
+        fs::create_dir_all(&cmds).unwrap();
+        // a/commands/pr.md was deleted upstream — this link is dead
+        symlink(rootc.join("plugins/a/commands/pr.md"), cmds.join("pr.md")).unwrap();
+        symlink(&live, cmds.join("push.md")).unwrap();
+        symlink(base.join("elsewhere"), cmds.join("foreign.md")).unwrap();
+
+        let have = installed_plugins(&[cmds.clone()], &rootc);
+        assert!(have.contains(&"a".into()), "dead link still names its plugin");
+        assert!(have.contains(&"b".into()));
+        assert_eq!(have.len(), 2, "foreign link ignored");
+
+        // b now owns pr.md — relinking b must take over the dead link.
+        fs::write(root.join("plugins/b/commands/pr.md"), "# pr").unwrap();
+        let p = Plugin { name: "b".into(), desc: String::new(), dir: rootc.join("plugins/b") };
+        let a = Agent { label: "t", skills: None, commands: Some(cmds.clone()), detected: true };
+        install_plugin(&p, &a, &rootc).unwrap();
+        assert_eq!(fs::read_to_string(cmds.join("pr.md")).unwrap(), "# pr");
+        assert!(collect_cafe_links(&[cmds], Some(&rootc), false).is_empty(), "no dead links left");
+
+        fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]
