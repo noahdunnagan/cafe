@@ -5,19 +5,23 @@
 // Symlinks point back into the clone, so `cafe update` (git pull) refreshes every
 // agent at once.
 //
-// ponytail: skills + commands only. Claude plugin hooks (e.g. plainspeak's
-// SessionStart) still need `/plugin install …@cafe`; noted, not reimplemented.
+// Plugins that ship a hooks/hooks.json (the "always on via a SessionStart hook"
+// ones) also get those hooks merged into Claude Code's settings.json — cafe used
+// to link the skill and silently drop the hook, which made the skill inert.
 // Unix-only symlinks (mac/Linux).
 
-use std::ffi::{OsStr, OsString};
 use std::io::{self, ErrorKind};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use cliclack::{confirm, intro, log, multiselect, note, outro, outro_cancel, select, spinner};
+use serde_json::{Map, Value};
 
 const MARKER: &str = ".claude-plugin/marketplace.json";
+/// The one agent that reads hooks out of a settings file rather than loading them
+/// from a plugin dir, so it's the only place cafe writes hooks.
+const CLAUDE: &str = "Claude Code";
 
 fn main() {
     let code = match run() {
@@ -60,7 +64,7 @@ fn run() -> io::Result<()> {
     let cmd = args.first().map(String::as_str);
     // None of the commands take arguments — reject stray ones loudly rather than
     // silently ignoring them (so `cafe list junk` doesn't look like it worked).
-    if matches!(cmd, Some("install" | "list" | "ls" | "update" | "clean" | "uninstall"))
+    if matches!(cmd, Some("install" | "list" | "ls" | "update" | "clean" | "uninstall" | "doctor"))
         && args.len() > 1
     {
         eprintln!("cafe: `{}` takes no arguments (got `{}`)", cmd.unwrap(), args[1..].join(" "));
@@ -71,6 +75,7 @@ fn run() -> io::Result<()> {
         None => menu(),
         Some("install") => install(),
         Some("list" | "ls") => list(),
+        Some("doctor") => doctor(),
         Some("update") => update(),
         Some("clean") => clean(),
         Some("uninstall") => uninstall(),
@@ -100,6 +105,7 @@ fn menu() -> io::Result<()> {
             sel = sel
                 .item("install".into(), "Install skills into your AI agents", "browse & pick")
                 .item("list".into(), "List available skills", "")
+                .item("doctor".into(), "Check what actually landed", "skills + hooks")
                 .item("update".into(), "Update everything", "git pull");
         }
         selected = sel
@@ -110,6 +116,7 @@ fn menu() -> io::Result<()> {
         let outcome = match selected.as_str() {
             "install" => install(),
             "list" => list(),
+            "doctor" => doctor(),
             "update" => update(),
             "clean" => clean(),
             "uninstall" => uninstall(),
@@ -156,6 +163,19 @@ fn install() -> io::Result<()> {
         .interact()?
     {
         return Err(io::Error::new(ErrorKind::Interrupted, "cancelled"));
+    }
+
+    // Remember what was unchecked. It's the one fact the filesystem can't tell us
+    // later: an absent plugin looks identical whether it was declined here or added
+    // upstream after the fact, and `update` needs to treat those opposite ways.
+    let declined: Vec<String> = plugins
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !picked.contains(i))
+        .map(|(_, p)| p.name.clone())
+        .collect();
+    if let Err(e) = set_declined(&c.home, &declined) {
+        log::warning(format!("Couldn't record your selection ({e}); `cafe update` will link everything."))?;
     }
 
     let sp = spinner();
@@ -206,6 +226,23 @@ fn install() -> io::Result<()> {
     if !pruned.is_empty() {
         log::info(format!("Cleaned {} dead link(s) from removed skills.", pruned.len()))?;
     }
+
+    // Skills alone leave the always-on plugins inert — their SessionStart hook has
+    // to be in settings.json or nothing injects them.
+    if targets.iter().any(|&i| agents[i].label == CLAUDE) {
+        let want: Vec<&Plugin> = picked.iter().map(|&i| &plugins[i]).collect();
+        match sync_hooks(&c.home, &c.root, &want) {
+            Ok(h) if h.changed => log::info(format!(
+                "Wired {} always-on hook(s) into ~/.claude/settings.json{}.",
+                h.added,
+                if h.stale > 0 { format!(", dropped {} stale one(s)", h.stale) } else { String::new() }
+            ))?,
+            Ok(_) => {}
+            Err(e) => log::warning(format!("Left settings.json alone — {e}"))?,
+        }
+    }
+
+    verify_after(&c)?;
 
     // Flag agents the user opted into that aren't actually on this machine, so a
     // fat-fingered toggle doesn't silently provision a stray dir tree.
@@ -302,20 +339,32 @@ fn update() -> io::Result<()> {
     }
 }
 
-/// Re-link every plugin the agent already has, then sweep what's still dead.
-/// A pull can add a command to a plugin you have, or move one between plugins —
-/// the old link then points at a deleted file, and agents skip dangling links in
-/// silence. Symlinks alone only cover edits to files that kept their path.
+/// Re-link every plugin the user didn't decline, then sweep what's still dead.
+///
+/// This used to relink only the plugins an agent already had, read back off its own
+/// links — which meant a plugin added upstream since your last `cafe install` was
+/// never in that set and so never arrived, forever, silently. Now the set is
+/// "everything except what you unchecked", so a new plugin lands on the next pull.
+/// A pull can also move a command between plugins; the old link then dangles, and
+/// agents skip dangling links without a word, so relinking has to happen regardless.
 fn relink(c: &Ctx) -> io::Result<()> {
     let plugins = plugins(&c.root);
+    let declined = declined(&c.home);
+    let want: Vec<&Plugin> = plugins.iter().filter(|p| !declined.contains(&p.name)).collect();
     let sp = spinner();
     sp.start("Relinking…");
     let mut linked = 0usize;
+    let mut claude = false;
     for a in agents(&c.home) {
-        let dirs: Vec<PathBuf> = [a.skills.clone(), a.commands.clone()].into_iter().flatten().collect();
-        let have = installed_plugins(&dirs, &c.root);
+        let dirs: Vec<PathBuf> =
+            [a.skills.clone(), a.commands.clone()].into_iter().flatten().collect();
+        // An agent with no cafe links was never installed into — leave it that way.
+        if collect_cafe_links(&dirs, Some(&c.root), true).is_empty() {
+            continue;
+        }
+        claude |= a.label == CLAUDE;
         // A permission error on one agent shouldn't sink the whole update.
-        for p in plugins.iter().filter(|p| have.contains(&file_name(&p.dir))) {
+        for p in &want {
             if let Ok((n, _)) = install_plugin(p, &a, &c.root) {
                 linked += n;
             }
@@ -327,36 +376,18 @@ fn relink(c: &Ctx) -> io::Result<()> {
         let _ = fs::remove_file(p);
     }
     sp.stop(format!("Relinked {linked} item(s), removed {} dead link(s).", dead.len()));
-    Ok(())
-}
-
-/// Which plugins an agent has installed, read back off its own link targets
-/// (…/plugins/<name>/skills|commands/<leaf>) — so update needs no state file and
-/// still respects whatever subset was picked at install time.
-fn installed_plugins(dirs: &[PathBuf], root: &Path) -> Vec<OsString> {
-    let mut out: Vec<OsString> = Vec::new();
-    for dir in dirs {
-        for p in read_all(dir) {
-            if !is_cafe_owned(&p, root) {
-                continue;
-            }
-            let Ok(target) = fs::read_link(&p) else { continue };
-            // Resolve live links (the raw target may run through a symlinked path);
-            // a dangling one can't resolve, so take it at face value.
-            let target = fs::canonicalize(&p).unwrap_or(target);
-            let Ok(rel) = target.strip_prefix(root) else { continue };
-            let mut parts = rel.components().map(|c| c.as_os_str());
-            if parts.next() != Some(OsStr::new("plugins")) {
-                continue;
-            }
-            if let Some(name) = parts.next().map(ToOwned::to_owned) {
-                if !out.contains(&name) {
-                    out.push(name);
-                }
-            }
+    if claude {
+        match sync_hooks(&c.home, &c.root, &want) {
+            Ok(h) if h.changed => log::info(format!(
+                "Hooks in ~/.claude/settings.json: {} live, {} stale removed.",
+                h.added, h.stale
+            ))?,
+            Ok(_) => {}
+            Err(e) => log::warning(format!("Left settings.json alone — {e}"))?,
         }
     }
-    out
+    verify_after(c)?;
+    Ok(())
 }
 
 fn uninstall() -> io::Result<()> {
@@ -365,16 +396,18 @@ fn uninstall() -> io::Result<()> {
     // deleted the clone (which leaves dangling links behind).
     let root = cafe_root().ok();
     let victims = collect_cafe_links(&agent_dirs(&home), root.as_deref(), true);
+    // Hooks can only be identified by the checkout path baked into their command,
+    // so with the clone gone they stay — say so rather than pretend it was clean.
+    let hooks = root.as_deref().map(|r| cafe_hooks(&home, r)).unwrap_or_default();
     intro("cafe · uninstall")?;
-    if victims.is_empty() {
-        outro("No cafe links found — nothing to remove.")?;
+    if victims.is_empty() && hooks.is_empty() {
+        outro("No cafe links or hooks found — nothing to remove.")?;
         return Ok(());
     }
-    note(
-        "These cafe links will be removed",
-        victims.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"),
-    )?;
-    if !confirm(format!("Remove {} link(s)?", victims.len())).interact()? {
+    let mut listing: Vec<String> = victims.iter().map(|p| p.display().to_string()).collect();
+    listing.extend(hooks.iter().map(|(e, name)| format!("{e} hook  ({name})  ~/.claude/settings.json")));
+    note("These will be removed", listing.join("\n"))?;
+    if !confirm(format!("Remove {} item(s)?", victims.len() + hooks.len())).interact()? {
         return Err(io::Error::new(ErrorKind::Interrupted, "cancelled"));
     }
     let mut n = 0;
@@ -383,7 +416,20 @@ fn uninstall() -> io::Result<()> {
             n += 1;
         }
     }
-    outro(format!("Removed {n} link(s)."))?;
+    if let Some(r) = root.as_deref() {
+        match sync_hooks(&home, r, &[]) {
+            Ok(h) => n += h.stale,
+            Err(e) => log::warning(format!("Left settings.json alone — {e}"))?,
+        }
+    }
+    let _ = fs::remove_file(state_path(&home));
+    if root.is_none() {
+        log::warning(
+            "No checkout found, so cafe hooks in ~/.claude/settings.json were left alone — \
+             they're identified by the path they point at. Restore the clone and re-run to clear them.",
+        )?;
+    }
+    outro(format!("Removed {n} item(s)."))?;
     Ok(())
 }
 
@@ -394,16 +440,27 @@ fn clean() -> io::Result<()> {
     // Works even if the checkout is gone — dead links are what we're after.
     let root = cafe_root().ok();
     let stale = collect_cafe_links(&agent_dirs(&home), root.as_deref(), false);
+    // A hook whose plugin dir is gone is the settings.json twin of a dangling link:
+    // Claude runs it every session and it fails silently.
+    let dead_hooks: Vec<(String, String)> = root
+        .as_deref()
+        .map(|r| {
+            cafe_hooks(&home, r)
+                .into_iter()
+                .filter(|(_, name)| !r.join("plugins").join(name).is_dir())
+                .collect()
+        })
+        .unwrap_or_default();
     intro("cafe · clean")?;
-    if stale.is_empty() {
-        outro("No dead links — nothing to clean.")?;
+    if stale.is_empty() && dead_hooks.is_empty() {
+        outro("No dead links or hooks — nothing to clean.")?;
         return Ok(());
     }
-    note(
-        "Dead cafe links (their skill no longer exists)",
-        stale.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"),
-    )?;
-    if !confirm(format!("Remove {} dead link(s)?", stale.len())).interact()? {
+    let mut listing: Vec<String> = stale.iter().map(|p| p.display().to_string()).collect();
+    listing.extend(dead_hooks.iter().map(|(e, name)| format!("{e} hook  ({name})  ~/.claude/settings.json")));
+    note("Dead cafe entries (whatever they point at no longer exists)", listing.join("\n"))?;
+    if !confirm(format!("Remove {} dead entry/entries?", stale.len() + dead_hooks.len())).interact()?
+    {
         return Err(io::Error::new(ErrorKind::Interrupted, "cancelled"));
     }
     let mut n = 0;
@@ -412,7 +469,84 @@ fn clean() -> io::Result<()> {
             n += 1;
         }
     }
-    outro(format!("Removed {n} dead link(s)."))?;
+    if let (Some(r), false) = (root.as_deref(), dead_hooks.is_empty()) {
+        match prune_dead_hooks(&home, r) {
+            Ok(k) => n += k,
+            Err(e) => log::warning(format!("Left settings.json alone — {e}"))?,
+        }
+    }
+    outro(format!("Removed {n} dead entry/entries."))?;
+    Ok(())
+}
+
+/// Say, per plugin, what is and isn't actually on disk. The whole failure mode this
+/// exists for was silent: a plugin listed in the manifest, linked nowhere, with its
+/// always-on hook missing, and nothing anywhere saying so.
+fn doctor() -> io::Result<()> {
+    let c = ctx()?;
+    intro("cafe · doctor")?;
+
+    let (unlisted, missing_dirs) = manifest_drift(&c.root);
+    if !unlisted.is_empty() {
+        log::warning(format!(
+            "In plugins/ but not in {MARKER}: {}. cafe installs them anyway; `/plugin` won't see them.",
+            unlisted.join(", ")
+        ))?;
+    }
+    if !missing_dirs.is_empty() {
+        log::warning(format!(
+            "Listed in {MARKER} with no plugins/ dir: {}.",
+            missing_dirs.join(", ")
+        ))?;
+    }
+
+    let rows = report(&c);
+    if rows.is_empty() {
+        outro("No agent has cafe installed — run `cafe install`.")?;
+        return Ok(());
+    }
+    let mut agent = "";
+    for r in &rows {
+        if r.agent != agent {
+            if !agent.is_empty() {
+                println!();
+            }
+            agent = r.agent;
+            log::info(agent)?;
+        }
+        println!("  {}", r.line());
+    }
+    println!();
+
+    let broken = rows.iter().filter(|r| r.broken()).count();
+    let mut absent: Vec<&str> = rows.iter().filter(|r| r.absent()).map(|r| r.plugin.as_str()).collect();
+    absent.sort_unstable();
+    absent.dedup();
+    if broken > 0 {
+        log::error(format!("{broken} plugin(s) half-installed or missing a hook."))?;
+    }
+    if !absent.is_empty() {
+        log::warning(format!("Not installed anywhere: {}.", absent.join(", ")))?;
+    }
+    if broken == 0 && absent.is_empty() {
+        outro("Every plugin is linked and every hook is wired.")?;
+    } else {
+        outro("Fix with:  cafe install")?;
+    }
+    Ok(())
+}
+
+/// Run after install/update so a partial result surfaces immediately instead of
+/// waiting for someone to notice a skill never showed up.
+fn verify_after(c: &Ctx) -> io::Result<()> {
+    let bad: Vec<String> =
+        report(c).into_iter().filter(Row::broken).map(|r| format!("{} ({})", r.plugin, r.agent)).collect();
+    if !bad.is_empty() {
+        log::warning(format!(
+            "Didn't fully land: {}. `cafe doctor` has the detail.",
+            bad.join(", ")
+        ))?;
+    }
     Ok(())
 }
 
@@ -425,14 +559,17 @@ USAGE
   cafe                interactive menu
   cafe install        browse skills and install into your agents
   cafe list           list available skills with descriptions
-  cafe update         git pull, then relink every agent (picks up moved skills)
-  cafe clean          remove dead links left by removed/renamed skills
-  cafe uninstall      remove cafe's links
+  cafe doctor         report, per plugin, whether its skills and hooks are present
+  cafe update         git pull, then relink every agent (picks up new/moved skills)
+  cafe clean          remove dead links and dead hooks left by removed skills
+  cafe uninstall      remove cafe's links and hooks
   cafe --help         this help
   cafe --version      print the version
 
 Skills install as symlinks back into this checkout, so one update reaches
-every agent. Run inside the clone, or set CAFE_HOME to point at it."
+every agent. Plugins that ship hooks/hooks.json also get those hooks merged
+into ~/.claude/settings.json — re-running never duplicates them, and nothing
+cafe didn't write is touched. Run inside the clone, or set CAFE_HOME to it."
     );
 }
 
@@ -628,21 +765,31 @@ fn install_plugin(p: &Plugin, a: &Agent, root: &Path) -> io::Result<(usize, Vec<
         Ok(())
     };
 
+    let (skills, commands) = plugin_items(p);
     if let Some(sdir) = &a.skills {
-        for skill in read_subdirs(&p.dir.join("skills")) {
-            if skill.join("SKILL.md").is_file() {
-                let dest = sdir.join(file_name(&skill));
-                place(&skill, dest)?;
-            }
+        for skill in skills {
+            let dest = sdir.join(file_name(&skill));
+            place(&skill, dest)?;
         }
     }
     if let Some(cdir) = &a.commands {
-        for cmd in read_files(&p.dir.join("commands"), "md") {
+        for cmd in commands {
             let dest = cdir.join(file_name(&cmd));
             place(&cmd, dest)?;
         }
     }
     Ok((linked, skipped))
+}
+
+/// What a plugin contributes: skill dirs that really carry a SKILL.md, and command
+/// markdown. One definition, so linking and verifying can never disagree about what
+/// a complete install looks like.
+fn plugin_items(p: &Plugin) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let skills = read_subdirs(&p.dir.join("skills"))
+        .into_iter()
+        .filter(|s| s.join("SKILL.md").is_file())
+        .collect();
+    (skills, read_files(&p.dir.join("commands"), "md"))
 }
 
 /// Symlink src -> dest. Refreshes a link cafe owns, but never touches a real
@@ -722,6 +869,433 @@ fn agent_dirs(home: &Path) -> Vec<PathBuf> {
     agents(home).into_iter().flat_map(|a| [a.skills, a.commands]).flatten().collect()
 }
 
+// ---------------------------------------------------------------- hooks
+
+fn settings_path(home: &Path) -> PathBuf {
+    home.join(".claude/settings.json")
+}
+
+/// Read settings.json whole, so everything cafe doesn't understand survives the
+/// round trip. A file that isn't valid JSON is an error, never something to
+/// overwrite — it's the user's config and it's the only copy.
+fn read_settings(path: &Path) -> io::Result<Map<String, Value>> {
+    let txt = match fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Map::new()),
+        Err(e) => return Err(io::Error::new(e.kind(), format!("{}: {e}", path.display()))),
+    };
+    if txt.trim().is_empty() {
+        return Ok(Map::new());
+    }
+    serde_json::from_str(&txt).map_err(|e| {
+        io::Error::other(format!(
+            "{} isn't a valid JSON object ({e}). Fix it and re-run; cafe won't overwrite it.",
+            path.display()
+        ))
+    })
+}
+
+/// Temp-file + rename so an interrupted write can't truncate the config, keeping
+/// one backup from the first time cafe ever touches it.
+fn write_settings(path: &Path, map: &Map<String, Value>) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let backup = path.with_extension("json.cafe-bak");
+    if path.exists() && !backup.exists() {
+        let _ = fs::copy(path, &backup);
+    }
+    let body = format!("{}\n", serde_json::to_string_pretty(map).map_err(io::Error::other)?);
+    let tmp = path.with_extension("json.cafe-tmp");
+    fs::write(&tmp, body)?;
+    fs::rename(&tmp, path)
+}
+
+/// Every string anywhere in a JSON value.
+fn json_strings(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::String(s) => out.push(s.clone()),
+        Value::Array(a) => a.iter().for_each(|x| json_strings(x, out)),
+        Value::Object(o) => o.values().for_each(|x| json_strings(x, out)),
+        _ => {}
+    }
+}
+
+/// Substitute `${CLAUDE_PLUGIN_ROOT}`. Claude's plugin loader expands that; a hook
+/// sitting in settings.json gets no such treatment, so copying it in verbatim would
+/// produce a command that cats a file literally named `${CLAUDE_PLUGIN_ROOT}/…`.
+fn expand(v: &Value, plugin_dir: &Path) -> Value {
+    let dir = plugin_dir.display().to_string();
+    match v {
+        Value::String(s) => Value::String(
+            s.replace("${CLAUDE_PLUGIN_ROOT}", &dir).replace("$CLAUDE_PLUGIN_ROOT", &dir),
+        ),
+        Value::Array(a) => Value::Array(a.iter().map(|x| expand(x, plugin_dir)).collect()),
+        Value::Object(o) => {
+            Value::Object(o.iter().map(|(k, x)| (k.clone(), expand(x, plugin_dir))).collect())
+        }
+        other => other.clone(),
+    }
+}
+
+/// A plugin's hook entries as (event, entry), paths already resolved. Empty when
+/// the plugin ships no hooks/hooks.json or it's malformed — a broken hooks file
+/// must not stop the skills from linking.
+fn plugin_hooks(p: &Plugin) -> Vec<(String, Value)> {
+    let Ok(txt) = fs::read_to_string(p.dir.join("hooks/hooks.json")) else {
+        return Vec::new();
+    };
+    let Ok(v) = serde_json::from_str::<Value>(&txt) else {
+        return Vec::new();
+    };
+    let Some(events) = v.get("hooks").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (event, entries) in events {
+        for e in entries.as_array().into_iter().flatten() {
+            out.push((event.clone(), expand(e, &p.dir)));
+        }
+    }
+    out
+}
+
+/// Which plugin a single hook command belongs to, read out of the checkout path in
+/// the command itself — cafe's proof of ownership. Deliberately catches
+/// hand-written commands pointing at the checkout: those are what a partial install
+/// leaves behind, and adopting one is what stops it becoming a duplicate.
+fn hook_owner(cmd: &Value, root: &Path) -> Option<String> {
+    let needle = format!("{}/plugins/", root.display());
+    let mut strs = Vec::new();
+    json_strings(cmd, &mut strs);
+    strs.iter().find_map(|s| {
+        let name: String = s.split(&needle).nth(1)?.chars().take_while(|c| *c != '/').collect();
+        (!name.is_empty()).then_some(name)
+    })
+}
+
+/// The individual commands inside one hook entry (an entry is a matcher plus a list).
+fn entry_commands(entry: &Value) -> Vec<Value> {
+    entry.get("hooks").and_then(Value::as_array).cloned().unwrap_or_default()
+}
+
+/// Remove the commands cafe owns from one event's entries, dropping any entry left
+/// with none. Granularity matters here: a hand-edited entry can hold a cafe command
+/// right next to one the user wrote, and taking the whole entry would delete config
+/// cafe never put there.
+fn strip_owned(entries: &mut Vec<Value>, root: &Path, doomed: &dyn Fn(&str) -> bool) -> usize {
+    let mut removed = 0;
+    for entry in entries.iter_mut() {
+        if let Some(inner) = entry.get_mut("hooks").and_then(Value::as_array_mut) {
+            let n = inner.len();
+            inner.retain(|h| !hook_owner(h, root).map(|name| doomed(&name)).unwrap_or(false));
+            removed += n - inner.len();
+        }
+    }
+    // An entry whose commands all went is an empty matcher — no reason to keep it.
+    entries.retain(|e| e.get("hooks").and_then(Value::as_array).map(|a| !a.is_empty()).unwrap_or(true));
+    removed
+}
+
+/// Every cafe-owned hook command currently in settings.json, as (event, plugin dir).
+fn cafe_hooks(home: &Path, root: &Path) -> Vec<(String, String)> {
+    let Ok(settings) = read_settings(&settings_path(home)) else {
+        return Vec::new();
+    };
+    let Some(events) = settings.get("hooks").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (event, arr) in events {
+        for entry in arr.as_array().into_iter().flatten() {
+            for cmd in entry_commands(entry) {
+                if let Some(name) = hook_owner(&cmd, root) {
+                    out.push((event.clone(), name));
+                }
+            }
+        }
+    }
+    out
+}
+
+struct HookSync {
+    added: usize,
+    stale: usize,
+    changed: bool,
+}
+
+/// Make the cafe-owned slice of Claude's hooks equal exactly `want`, and leave
+/// every other key and every foreign hook byte-identical.
+///
+/// Idempotent by construction: owned entries are dropped and rebuilt on every run,
+/// so running twice yields the same file and a half-finished previous run repairs
+/// itself. Writes nothing when the result already matches.
+fn sync_hooks(home: &Path, root: &Path, want: &[&Plugin]) -> io::Result<HookSync> {
+    let path = settings_path(home);
+    let before = read_settings(&path)?;
+    let mut settings = before.clone();
+    let mut hooks =
+        settings.get("hooks").and_then(Value::as_object).cloned().unwrap_or_else(Map::new);
+
+    let mut dropped = 0usize;
+    for entries in hooks.values_mut() {
+        if let Some(arr) = entries.as_array_mut() {
+            dropped += strip_owned(arr, root, &|_| true);
+        }
+    }
+    let mut added = 0usize;
+    for p in want {
+        for (event, entry) in plugin_hooks(p) {
+            if let Some(arr) =
+                hooks.entry(event).or_insert_with(|| Value::Array(Vec::new())).as_array_mut()
+            {
+                // Counted in commands, matching what strip_owned removes.
+                added += entry_commands(&entry).len();
+                arr.push(entry);
+            }
+        }
+    }
+    // Don't leave `"SessionStart": []` behind after removing the last entry.
+    hooks.retain(|_, v| !v.as_array().map(|a| a.is_empty()).unwrap_or(false));
+    match hooks.is_empty() {
+        true => settings.remove("hooks"),
+        false => settings.insert("hooks".into(), Value::Object(hooks)),
+    };
+
+    let changed = settings != before;
+    if changed {
+        write_settings(&path, &settings)?;
+    }
+    Ok(HookSync { added, stale: dropped.saturating_sub(added), changed })
+}
+
+/// Drop only the cafe hooks whose plugin dir is gone, leaving live ones in place.
+fn prune_dead_hooks(home: &Path, root: &Path) -> io::Result<usize> {
+    let path = settings_path(home);
+    let before = read_settings(&path)?;
+    let mut settings = before.clone();
+    let Some(mut hooks) = settings.get("hooks").and_then(Value::as_object).cloned() else {
+        return Ok(0);
+    };
+    let mut removed = 0usize;
+    for entries in hooks.values_mut() {
+        if let Some(arr) = entries.as_array_mut() {
+            removed += strip_owned(arr, root, &|name| !root.join("plugins").join(name).is_dir());
+        }
+    }
+    hooks.retain(|_, v| !v.as_array().map(|a| a.is_empty()).unwrap_or(false));
+    match hooks.is_empty() {
+        true => settings.remove("hooks"),
+        false => settings.insert("hooks".into(), Value::Object(hooks)),
+    };
+    if settings != before {
+        write_settings(&path, &settings)?;
+    }
+    Ok(removed)
+}
+
+// ---------------------------------------------------------------- state
+
+/// The plugins the user unchecked at install time.
+///
+/// The only fact not readable off the filesystem: an absent plugin looks identical
+/// whether it was declined or added upstream after the last install. Without this,
+/// `update` has to pick one — never picking up new plugins (the old bug) or
+/// resurrecting declined ones on every pull.
+fn state_path(home: &Path) -> PathBuf {
+    home.join(".config/cafe/state.json")
+}
+
+fn declined(home: &Path) -> Vec<String> {
+    fs::read_to_string(state_path(home))
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .and_then(|v| {
+            Some(
+                v.get("declined")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect(),
+            )
+        })
+        .unwrap_or_default()
+}
+
+fn set_declined(home: &Path, names: &[String]) -> io::Result<()> {
+    let path = state_path(home);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let body = serde_json::json!({ "declined": names });
+    let txt = serde_json::to_string_pretty(&body).map_err(io::Error::other)?;
+    fs::write(&path, format!("{txt}\n")).map_err(|e| io::Error::new(e.kind(), format!("{}: {e}", path.display())))
+}
+
+// ---------------------------------------------------------------- verify
+
+enum Hook {
+    /// Plugin ships no hooks, or this agent doesn't take them.
+    NotApplicable,
+    Wired,
+    Missing,
+}
+
+struct Row {
+    agent: &'static str,
+    plugin: String,
+    skills: (usize, usize),
+    commands: (usize, usize),
+    hook: Hook,
+}
+
+impl Row {
+    fn wanted(&self) -> usize {
+        self.skills.1 + self.commands.1
+    }
+    fn have(&self) -> usize {
+        self.skills.0 + self.commands.0
+    }
+    /// Nothing of this plugin is here. Not a fault — you may have declined it — but
+    /// it's the state that went unreported for token-efficiency.
+    fn absent(&self) -> bool {
+        self.wanted() > 0 && self.have() == 0
+    }
+    /// Installed, but not completely: some links missing, or the hook never landed.
+    fn broken(&self) -> bool {
+        self.have() > 0 && (self.have() < self.wanted() || matches!(self.hook, Hook::Missing))
+    }
+    fn line(&self) -> String {
+        let mark = if self.broken() {
+            "✗"
+        } else if self.absent() {
+            "·"
+        } else {
+            "✓"
+        };
+        let mut bits = Vec::new();
+        if self.skills.1 > 0 {
+            bits.push(format!("skills {}/{}", self.skills.0, self.skills.1));
+        }
+        if self.commands.1 > 0 {
+            bits.push(format!("cmds {}/{}", self.commands.0, self.commands.1));
+        }
+        match self.hook {
+            Hook::Wired => bits.push("hook wired".into()),
+            Hook::Missing => bits.push("HOOK MISSING".into()),
+            Hook::NotApplicable => {}
+        }
+        format!("{mark} {:<18} {}", self.plugin, bits.join("  "))
+    }
+}
+
+/// What's actually on disk right now, per agent × plugin. Only agents cafe has been
+/// installed into are reported — the rest aren't broken, they're just not customers.
+fn report(c: &Ctx) -> Vec<Row> {
+    let plugins = plugins(&c.root);
+    // Compare at command level, not entry level: a hook is wired if the command is
+    // in the file, wherever it ended up being grouped.
+    let live: Vec<Value> = read_settings(&settings_path(&c.home))
+        .ok()
+        .and_then(|s| s.get("hooks").and_then(Value::as_object).cloned())
+        .map(|m| {
+            m.values()
+                .filter_map(Value::as_array)
+                .flatten()
+                .flat_map(entry_commands)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut rows = Vec::new();
+    for a in agents(&c.home) {
+        let dirs: Vec<PathBuf> =
+            [a.skills.clone(), a.commands.clone()].into_iter().flatten().collect();
+        if collect_cafe_links(&dirs, Some(&c.root), true).is_empty() {
+            continue;
+        }
+        for p in &plugins {
+            let (skills, commands) = plugin_items(p);
+            let want_hooks = plugin_hooks(p);
+            // Nothing this agent can take (a commands-only plugin on a skills-only
+            // agent) — reporting it as fine would just be noise.
+            if count_for(&skills, a.skills.as_deref(), &c.root).1
+                + count_for(&commands, a.commands.as_deref(), &c.root).1
+                == 0
+            {
+                continue;
+            }
+            let hook = if want_hooks.is_empty() || a.label != CLAUDE {
+                Hook::NotApplicable
+            } else if want_hooks
+                .iter()
+                .flat_map(|(_, e)| entry_commands(e))
+                .all(|cmd| live.contains(&cmd))
+            {
+                Hook::Wired
+            } else {
+                Hook::Missing
+            };
+            rows.push(Row {
+                agent: a.label,
+                plugin: p.name.clone(),
+                // An agent with no commands dir (Gemini, .agents, …) isn't missing
+                // those commands — it can't take them. Count only what it accepts.
+                skills: count_for(&skills, a.skills.as_deref(), &c.root),
+                commands: count_for(&commands, a.commands.as_deref(), &c.root),
+                hook,
+            });
+        }
+    }
+    rows
+}
+
+/// (present, expected) for `srcs` in `dir`. No dir means this agent takes none of
+/// them, so nothing is expected either. A dangling link counts as missing, which is
+/// the whole point — agents skip those in silence.
+fn count_for(srcs: &[PathBuf], dir: Option<&Path>, root: &Path) -> (usize, usize) {
+    let Some(dir) = dir else { return (0, 0) };
+    let n = srcs
+        .iter()
+        .filter(|s| {
+            let dest = dir.join(file_name(s));
+            is_cafe_owned(&dest, root)
+                && dest.exists()
+                && fs::canonicalize(&dest).ok() == fs::canonicalize(s).ok()
+        })
+        .count();
+    (n, srcs.len())
+}
+
+/// Plugin dirs missing from marketplace.json, and manifest entries with no dir.
+/// cafe installs from the dirs — strictly the safer source, since forgetting a
+/// manifest edit can't make a plugin vanish — so drift is a publishing bug rather
+/// than an install one, but it's invisible until someone installs via `/plugin`.
+fn manifest_drift(root: &Path) -> (Vec<String>, Vec<String>) {
+    let listed: Vec<String> = fs::read_to_string(root.join(MARKER))
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .and_then(|v| {
+            Some(
+                v.get("plugins")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|p| p.get("name")?.as_str().map(str::to_string))
+                    .collect(),
+            )
+        })
+        .unwrap_or_default();
+    let dirs: Vec<String> = read_subdirs(&root.join("plugins"))
+        .iter()
+        .filter(|d| d.join(".claude-plugin/plugin.json").is_file())
+        .map(|d| file_name(d).to_string_lossy().into_owned())
+        .collect();
+    (
+        dirs.iter().filter(|d| !listed.contains(d)).cloned().collect(),
+        listed.iter().filter(|l| !dirs.contains(l)).cloned().collect(),
+    )
+}
+
 // ---------------------------------------------------------------- helpers
 
 fn json_str(txt: &str, key: &str) -> Option<String> {
@@ -776,11 +1350,27 @@ mod tests {
         d
     }
 
+    /// A plugin dir with a SessionStart hook, for the settings.json tests.
+    fn hooked_plugin(root: &Path, name: &str) -> Plugin {
+        let dir = root.join("plugins").join(name);
+        fs::create_dir_all(dir.join("hooks")).unwrap();
+        fs::create_dir_all(dir.join("skills").join(name)).unwrap();
+        fs::write(dir.join("skills").join(name).join("SKILL.md"), "# skill").unwrap();
+        fs::write(
+            dir.join("hooks/hooks.json"),
+            r#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command",
+               "command":"cat \"${CLAUDE_PLUGIN_ROOT}/skills/NAME/SKILL.md\"","timeout":10}]}]}}"#
+                .replace("NAME", name),
+        )
+        .unwrap();
+        Plugin { name: name.into(), desc: String::new(), dir }
+    }
+
     // The /pr case: a command moves from plugin `a` to plugin `b` upstream. The old
-    // link dangles; relinking what the agent already has must repoint it.
+    // link dangles, and agents skip dangling links silently — relinking must repoint it.
     #[test]
-    fn installed_plugins_reads_back_owners_including_dangling_links() {
-        let base = scratch("owners");
+    fn relinking_takes_over_a_dead_link_left_by_a_moved_command() {
+        let base = scratch("moved");
         let root = base.join("cafe");
         let live = root.join("plugins/b/commands/push.md");
         fs::create_dir_all(live.parent().unwrap()).unwrap();
@@ -791,12 +1381,6 @@ mod tests {
         // a/commands/pr.md was deleted upstream — this link is dead
         symlink(rootc.join("plugins/a/commands/pr.md"), cmds.join("pr.md")).unwrap();
         symlink(&live, cmds.join("push.md")).unwrap();
-        symlink(base.join("elsewhere"), cmds.join("foreign.md")).unwrap();
-
-        let have = installed_plugins(&[cmds.clone()], &rootc);
-        assert!(have.contains(&"a".into()), "dead link still names its plugin");
-        assert!(have.contains(&"b".into()));
-        assert_eq!(have.len(), 2, "foreign link ignored");
 
         // b now owns pr.md — relinking b must take over the dead link.
         fs::write(root.join("plugins/b/commands/pr.md"), "# pr").unwrap();
@@ -807,6 +1391,175 @@ mod tests {
         assert!(collect_cafe_links(&[cmds], Some(&rootc), false).is_empty(), "no dead links left");
 
         fs::remove_dir_all(&base).unwrap();
+    }
+
+    // The bug this whole change exists for: a plugin's SessionStart hook has to reach
+    // settings.json, exactly once, without disturbing anything already in the file.
+    #[test]
+    fn sync_hooks_is_idempotent_and_leaves_foreign_config_alone() {
+        let base = scratch("hooks");
+        let home = base.join("home");
+        let root = base.join("cafe");
+        fs::create_dir_all(root.join("plugins")).unwrap();
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let settings = home.join(".claude/settings.json");
+        fs::write(
+            &settings,
+            r#"{"model":"opus","hooks":{"SessionStart":[{"hooks":[{"type":"command",
+               "command":"clawd SessionStart"}]}],"Stop":[{"hooks":[{"type":"command",
+               "command":"clawd Stop"}]}]},"statusLine":{"command":"mine.sh"}}"#,
+        )
+        .unwrap();
+        let p = hooked_plugin(&rootc, "token-efficiency");
+
+        let first = sync_hooks(&home, &rootc, &[&p]).unwrap();
+        assert!(first.changed && first.added == 1);
+        let after = fs::read_to_string(&settings).unwrap();
+        assert!(after.contains("token-efficiency/SKILL.md"), "hook landed");
+        assert!(!after.contains("CLAUDE_PLUGIN_ROOT"), "plugin root expanded to a real path");
+        assert!(after.contains("clawd SessionStart") && after.contains("clawd Stop"));
+        assert!(after.contains("\"model\"") && after.contains("mine.sh"), "unrelated keys kept");
+        // preserve_order: the user's key order survives a rewrite.
+        assert!(after.find("\"model\"").unwrap() < after.find("\"hooks\"").unwrap());
+
+        // Re-running must be a no-op, not a second copy of the same hook.
+        let again = sync_hooks(&home, &rootc, &[&p]).unwrap();
+        assert!(!again.changed, "second run rewrote the file");
+        assert_eq!(fs::read_to_string(&settings).unwrap(), after);
+        assert_eq!(after.matches("token-efficiency/SKILL.md").count(), 1);
+
+        // Dropping the plugin takes its hook back out and leaves the rest.
+        let off = sync_hooks(&home, &rootc, &[]).unwrap();
+        assert!(off.changed && off.stale == 1);
+        let cleared = fs::read_to_string(&settings).unwrap();
+        assert!(!cleared.contains("token-efficiency"));
+        assert!(cleared.contains("clawd Stop") && cleared.contains("mine.sh"));
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    // A hand-patched hook pointing into the checkout is cafe's to adopt — otherwise
+    // repairing a partial install leaves the user with the same hook twice.
+    #[test]
+    fn sync_hooks_adopts_a_hand_written_entry_instead_of_duplicating_it() {
+        let base = scratch("adopt");
+        let home = base.join("home");
+        let root = base.join("cafe");
+        fs::create_dir_all(root.join("plugins")).unwrap();
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let p = hooked_plugin(&rootc, "plainspeak");
+        let settings = home.join(".claude/settings.json");
+        fs::write(
+            &settings,
+            serde_json::to_string(&serde_json::json!({
+                "hooks": {"SessionStart": [{"hooks": [{"type": "command",
+                    "command": format!("cat {}/plugins/plainspeak/skills/plainspeak/SKILL.md", rootc.display())}]}]}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        sync_hooks(&home, &rootc, &[&p]).unwrap();
+        let after = fs::read_to_string(&settings).unwrap();
+        assert_eq!(after.matches("plainspeak/SKILL.md").count(), 1, "adopted, not duplicated");
+
+        // And a hook whose plugin was deleted upstream is dead weight clean removes.
+        fs::remove_dir_all(&p.dir).unwrap();
+        assert_eq!(prune_dead_hooks(&home, &rootc).unwrap(), 1);
+        assert!(!fs::read_to_string(&settings).unwrap().contains("plainspeak"));
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    // Straight off a real machine: one SessionStart entry holding a hand-written echo
+    // next to a hand-written `cat` into the checkout. Cafe owns the second command and
+    // nothing else — taking the whole entry would silently delete the user's echo.
+    #[test]
+    fn sync_hooks_splits_a_shared_entry_and_keeps_the_users_command() {
+        let base = scratch("shared");
+        let home = base.join("home");
+        let root = base.join("cafe");
+        fs::create_dir_all(root.join("plugins")).unwrap();
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        let rootc = fs::canonicalize(&root).unwrap();
+        let p = hooked_plugin(&rootc, "token-efficiency");
+        let settings = home.join(".claude/settings.json");
+        fs::write(
+            &settings,
+            serde_json::to_string(&serde_json::json!({"hooks": {"SessionStart": [{"hooks": [
+                {"type": "command", "command": "echo 'my own note'"},
+                {"type": "command", "command": format!("cat {}/plugins/token-efficiency/skills/token-efficiency/SKILL.md", rootc.display())}
+            ]}]}}))
+            .unwrap(),
+        )
+        .unwrap();
+
+        sync_hooks(&home, &rootc, &[&p]).unwrap();
+        let after = fs::read_to_string(&settings).unwrap();
+        assert!(after.contains("my own note"), "user's command survived");
+        // Count commands, not substrings — the plugin name appears twice in one path.
+        assert_eq!(cafe_hooks(&home, &rootc), vec![("SessionStart".into(), "token-efficiency".into())]);
+
+        // And it stays that way: no second copy, no lost note.
+        sync_hooks(&home, &rootc, &[&p]).unwrap();
+        assert_eq!(fs::read_to_string(&settings).unwrap(), after);
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    // Corrupt settings.json is the user's only copy — refuse it, never overwrite.
+    #[test]
+    fn sync_hooks_refuses_to_touch_unparseable_settings() {
+        let base = scratch("corrupt");
+        let home = base.join("home");
+        let root = base.join("cafe");
+        fs::create_dir_all(root.join("plugins")).unwrap();
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        let settings = home.join(".claude/settings.json");
+        fs::write(&settings, "{ this is not json").unwrap();
+        assert!(sync_hooks(&home, &root, &[]).is_err());
+        assert_eq!(fs::read_to_string(&settings).unwrap(), "{ this is not json");
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    // `update` used to relink only what an agent already had, so a plugin added
+    // upstream was skipped every single time. Declines are the one thing it respects.
+    #[test]
+    fn declined_round_trips_and_defaults_to_nothing() {
+        let base = scratch("state");
+        let home = base.join("home");
+        fs::create_dir_all(&home).unwrap();
+        assert!(declined(&home).is_empty(), "no state file means nothing is declined");
+        set_declined(&home, &["glm".to_string()]).unwrap();
+        assert_eq!(declined(&home), vec!["glm".to_string()]);
+        set_declined(&home, &[]).unwrap();
+        assert!(declined(&home).is_empty());
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    // Every plugin this repo ships that claims an always-on hook must actually have
+    // one cafe can read — the claim lives in a description, the hook in a file.
+    #[test]
+    fn always_on_plugins_in_this_repo_ship_a_readable_hook() {
+        let repo =
+            fs::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()).unwrap();
+        for p in plugins(&repo).iter().filter(|p| p.desc.contains("SessionStart hook")) {
+            let hooks = plugin_hooks(p);
+            assert!(!hooks.is_empty(), "{} claims a SessionStart hook but ships none", p.name);
+            assert!(hooks.iter().any(|(e, _)| e == "SessionStart"), "{}: wrong event", p.name);
+            for (_, entry) in &hooks {
+                let mut strs = Vec::new();
+                json_strings(entry, &mut strs);
+                assert!(
+                    !strs.iter().any(|s| s.contains("CLAUDE_PLUGIN_ROOT")),
+                    "{}: plugin root left unexpanded",
+                    p.name
+                );
+                assert!(hook_owner(entry, &repo).is_some(), "{}: hook isn't recognisably cafe's", p.name);
+            }
+        }
     }
 
     #[test]

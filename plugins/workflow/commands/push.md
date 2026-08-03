@@ -30,4 +30,4 @@ Breaking changes: add an exclamation mark after type (e.g. feat!:) or BREAKING C
 Keep it short, lowercase, and descriptive.
 Then run the exact git commands required to stage, and commit files without pushing. The user will manually push.
 
-NEVER co author claude in the commit. NEVER mention that this was AI generated. This should only be a short quick command for a team member to commit their code from their device.
+NEVER add a `Co-Authored-By` trailer for Claude or any other AI, and NEVER mention that this was AI generated. This should only be a short quick command for a team member to commit their code from their device.

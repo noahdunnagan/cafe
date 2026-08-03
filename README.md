@@ -48,16 +48,24 @@ that tree instead — contributors get their own code, not the last release.
 |---------|------|
 | `cafe install` | Browse skills, pick agents, link them in |
 | `cafe list` | Every skill with its description |
-| `cafe update` | `git pull` — refreshes every linked agent at once |
-| `cafe uninstall` | Remove cafe's links (leaves your own files untouched) |
+| `cafe doctor` | Per plugin: are its skills, commands and hooks actually present? |
+| `cafe update` | `git pull` — relinks every agent, including plugins added since |
+| `cafe clean` | Drop links and hooks whose skill no longer exists |
+| `cafe uninstall` | Remove cafe's links and hooks (leaves your own files untouched) |
 
 Skills install as symlinks back into the checkout, so a single `cafe update`
 reaches every agent. Unix-only (macOS/Linux).
 
+Plugins marked **Hook** above are always-on, and that needs an entry in
+`~/.claude/settings.json` rather than a symlink — `cafe install` and `cafe update`
+write those too. Re-running never duplicates them, and nothing cafe didn't write is
+touched. `cafe doctor` says what's missing, since a skipped skill or hook is
+otherwise completely silent.
+
 ## Install — Claude Code plugins
 
-Claude Code can install directly from the plugin marketplace, which also wires up
-hooks like plainspeak's always-on SessionStart:
+Claude Code can install directly from the plugin marketplace, which wires the same
+always-on hooks:
 
 ```
 /plugin marketplace add noahdunnagan/cafe
