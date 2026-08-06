@@ -1,0 +1,8 @@
+{
+  "name": "codex",
+  "description": "Delegate research, code review, or collaborative multi-turn sparring to Codex CLI. Auto-selects the cheapest model for research and the best available for review and xhigh back-and-forth with Claude.",
+  "version": "1.3.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}
