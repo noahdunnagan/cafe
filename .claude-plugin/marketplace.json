@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.18.0"
+    "version": "1.19.0"
   },
   "plugins": [
     {
@@ -148,6 +148,15 @@
       "source": "./plugins/token-efficiency",
       "description": "Cut daily token burn in Claude Code. Always-on discipline (subagents for tool loops, bulk in files, /clear suggestions at task pivots) via a SessionStart hook, plus an invocable skill explaining where input tokens actually go and the levers ranked by impact.",
       "version": "0.1.0",
+      "author": {
+        "name": "Noah Dunnagan"
+      }
+    },
+    {
+      "name": "engineering",
+      "source": "./plugins/engineering",
+      "description": "How code gets written now that writing it is free. Fewest lines that fully do the job, obvious data flow, the dumbest solution that works, cut before handing off. Always on via a SessionStart hook, so it governs the first pass instead of a cleanup pass after it.",
+      "version": "1.0.0",
       "author": {
         "name": "Noah Dunnagan"
       }

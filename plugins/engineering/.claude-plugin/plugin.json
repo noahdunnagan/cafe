@@ -1,0 +1,8 @@
+{
+  "name": "engineering",
+  "description": "How code gets written now that writing it is free. Fewest lines that fully do the job, obvious data flow, the dumbest solution that works, cut before handing off. Always on via a SessionStart hook, so it governs the first pass instead of a cleanup pass after it.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Noah Dunnagan"
+  }
+}

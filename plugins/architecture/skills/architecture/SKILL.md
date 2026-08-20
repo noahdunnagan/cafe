@@ -128,6 +128,6 @@ The result reads as "that's it?" precisely because the edge-case handling lives 
 - **Never cleverness over consistency.** The reader's lack of surprise is the point.
 - **Never speculative infrastructure.** No queue, cache, or service before its trigger fires.
 
-## With the tech-stack skill
+## With the other skills
 
-This skill decides *shape*: where code lives and when systems split. The **tech-stack** skill decides *tools*: frameworks, databases, hosting. If both are installed they compose; when a tool choice comes up, defer to tech-stack. When either skill would have you ask the user to choose, don't. Pick the default and move.
+This skill decides *shape*: where code lives and when systems split. **tech-stack** decides *tools*: frameworks, databases, hosting. **engineering** decides how the code inside those files gets written: the fewest-lines bar, cutting before handing off, the simplest solution. They compose; defer to tech-stack on a tool choice and to engineering on how a given file reads. When any of them would have you ask the user to choose, don't. Pick the default and move.

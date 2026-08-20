@@ -18,6 +18,7 @@ Windsurf, Cline, and Kilo**.
 | `fable` | Skill + Hook | Get the most out of Claude Fable 5 — Fable architects, cheaper models execute. Always-on routing via SessionStart. |
 | `tech-stack` | Skill | The canonical, opinionated stack for new projects — TanStack web, Rust backends, Railway-first. |
 | `architecture` | Skill | How systems get laid out — one app by default, named triggers for adding anything. |
+| `engineering` | Skill + Hook | How code gets written now that writing it is free — fewest lines, obvious data flow, cut before handing off. Always-on via SessionStart. |
 | `parallel` | Skill + Command | Launch and track parallel work in isolated git worktrees. |
 | `plainspeak` | Skill + Hook | Kills AI reply patterns — no filler openers, hedge stacks, recap closers, or jargon. |
 | `noahspeak` | Skill + Hook | Register layer over plainspeak — replies in the owner's own voice. Derived from ~3,200 real prompts. |
