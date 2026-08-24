@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Skills and commands for Claude Code and other AI coding agents",
-    "version": "1.19.0"
+    "version": "1.20.0"
   },
   "plugins": [
     {
@@ -102,7 +102,7 @@
       "name": "architecture",
       "source": "./plugins/architecture",
       "description": "How systems get laid out. One app by default, siloed apps/* when there are real deployables, named triggers for adding anything. The architect's judgment, encoded, so the person building never has to make a structure decision.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Noah Dunnagan"
       }
@@ -156,7 +156,7 @@
       "name": "engineering",
       "source": "./plugins/engineering",
       "description": "How code gets written now that writing it is free. Fewest lines that fully do the job, obvious data flow, the dumbest solution that works, cut before handing off. Always on via a SessionStart hook, so it governs the first pass instead of a cleanup pass after it.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Noah Dunnagan"
       }

@@ -28,6 +28,7 @@ refreshes every agent at once. Unix-only (macOS/Linux).
 - **clog** — search your Claude Code chat history via the `clog` CLI.
 - **todo** — file a terse GitHub issue for a task on any repo; title carries the todo, body only when the title can't.
 - **architecture** — where files go, when one app becomes two, and when to refuse a database or service.
+- **engineering** — how code gets written now that writing it is free: fewest lines, obvious data flow, cut before handing off. Always-on via SessionStart on Claude Code.
 - **fable** — model routing: Fable architects, Sol/Opus/Sonnet execute. On Claude Code a SessionStart hook makes it always-on; elsewhere it auto-invokes by description.
 
 ## Commands
