@@ -38,6 +38,10 @@ reaches every agent. Re-running `cafe install` is safe — links have fixed name
 so it refreshes in place instead of duplicating, and self-prunes dead links.
 `cafe clean` does that prune on demand across every agent.
 
+OMP and Pi share the `~/.agents/skills` target. Invoke an installed skill in
+either agent with `/skill:<name>`; cafe does not install slash-command files or
+hooks there.
+
 ## Conductor
 
 Conductor runs Claude Code & Codex and has no skills dir of its own, so

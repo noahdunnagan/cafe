@@ -547,10 +547,13 @@ fn agents(home: &Path) -> Vec<Agent> {
             detected: has(&[".openclaw"], &[]),
         },
         Agent {
-            label: ".agents (Codex · Zed · Copilot)",
+            label: ".agents (OMP · Pi · Codex · Zed · Copilot)",
             skills: Some(d(".agents/skills")),
             commands: None,
-            detected: has(&[".agents", ".config/zed", ".codex", ".copilot"], &["zed", "codex", "copilot"]),
+            detected: has(
+                &[".agents", ".omp", ".pi", ".config/zed", ".codex", ".copilot"],
+                &["omp", "pi", "zed", "codex", "copilot"],
+            ),
         },
     ]
 }
@@ -715,6 +718,26 @@ mod tests {
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    #[test]
+    fn omp_state_selects_shared_agents_skills_target() {
+        let home = scratch("omp-agent");
+        fs::create_dir(home.join(".omp")).unwrap();
+
+        let skill_dir = home.join(".agents/skills");
+        let shared = agents(&home)
+            .into_iter()
+            .filter(|agent| agent.skills.as_ref() == Some(&skill_dir))
+            .collect::<Vec<_>>();
+
+        assert_eq!(shared.len(), 1, "there is exactly one shared .agents target");
+        let target = &shared[0];
+        assert!(target.label.contains("OMP") && target.label.contains("Pi"));
+        assert!(target.detected, "OMP state detects the shared target");
+        assert!(target.commands.is_none(), "the shared target does not install commands");
+
+        fs::remove_dir_all(&home).unwrap();
     }
 
     #[test]

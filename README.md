@@ -4,8 +4,8 @@ Skills and slash commands for AI coding agents, shipped as plain files over git 
 no account, no hosted service, no API key.
 
 The skills use the cross-vendor [`SKILL.md`](https://agents.md) format, so one copy
-works across **Claude Code, Codex, Cursor, Copilot, Gemini CLI, opencode, Zed,
-Windsurf, Cline, and Kilo**.
+works across **Claude Code, Codex, Cursor, Copilot, Gemini CLI, Oh My Pi (OMP),
+Pi, opencode, Zed, Windsurf, Cline, and Kilo**.
 
 ## Skills
 
@@ -52,6 +52,10 @@ that tree instead — contributors get their own code, not the last release.
 
 Skills install as symlinks back into the checkout, so a single `cafe update`
 reaches every agent. Unix-only (macOS/Linux).
+
+For OMP and Pi, cafe links skills through the shared `~/.agents/skills`
+location. Invoke one in either agent with `/skill:<name>`. This shared target
+installs skills only, not slash-command files or hooks.
 
 ## Install — Claude Code plugins
 
